@@ -44,81 +44,119 @@ class _AdminShopPageState extends State<AdminShopPage> {
       children: [
         // Toolbar
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           color: Colors.white,
           child: Row(children: [
             Expanded(child: AdminSearchBar(controller: _search, hint: 'Search items…', onChanged: (_) => _applyFilter())),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             AdminActionButton(label: 'Add Item', icon: Icons.add_rounded, onTap: () => _showItemForm(context, null)),
           ]),
         ),
         // Category filter
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           color: AppColors.background,
-          child: Row(children: [
-            _catChip('All', null),
-            const SizedBox(width: 8),
-            _catChip('WiFi', ShopCategory.wifi),
-            const SizedBox(width: 8),
-            _catChip('Campus Life', ShopCategory.campusLife),
-            const SizedBox(width: 8),
-            _catChip('Academic', ShopCategory.academic),
-          ]),
-        ),
-        Container(height: 1, color: AppColors.border),
-        // Table header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: AppColors.background,
-          child: Row(children: const [
-            Expanded(flex: 3, child: Text('ITEM', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(flex: 2, child: Text('CATEGORY', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('PRICE', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('STATUS', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            SizedBox(width: 80),
-          ]),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _catChip('All', null),
+              const SizedBox(width: 12),
+              _catChip('WiFi', ShopCategory.wifi),
+              const SizedBox(width: 12),
+              _catChip('Campus Life', ShopCategory.campusLife),
+              const SizedBox(width: 12),
+              _catChip('Academic', ShopCategory.academic),
+            ]),
+          ),
         ),
         Container(height: 1, color: AppColors.border),
         // Items list
         Expanded(
-          child: ListView.builder(
-            itemCount: _filtered.length,
-            itemBuilder: (_, i) => _buildItemRow(_filtered[i]),
+          child: Container(
+            color: AppColors.background,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              itemCount: _filtered.length,
+              itemBuilder: (_, i) => _buildItemListTile(_filtered[i]),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildItemRow(ShopItem item) {
+  Widget _iconBtn(IconData icon, VoidCallback onTap, {Color color = AppColors.textSecondary}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
+    );
+  }
+
+  Widget _buildItemListTile(ShopItem item) {
     final availColor = item.availability == AvailabilityStatus.available ? const Color(0xFF00B37E) : item.availability == AvailabilityStatus.limited ? const Color(0xFFE08C00) : const Color(0xFFE03E3E);
     final availLabel = item.availability == AvailabilityStatus.available ? 'Available' : item.availability == AvailabilityStatus.limited ? 'Limited' : 'Out of Stock';
     final catLabel = item.category == ShopCategory.wifi ? 'WiFi' : item.category == ShopCategory.campusLife ? 'Campus Life' : 'Academic';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.border))),
-      child: Row(
-        children: [
-          Expanded(flex: 3, child: Row(children: [
-            Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(10)), child: Icon(item.icon, color: AppColors.primary, size: 18)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(item.name, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text(item.description, style: const TextStyle(fontFamily: 'Sora', fontSize: 10, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
-            ])),
-          ])),
-          Expanded(flex: 2, child: Text(catLabel, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary))),
-          Expanded(child: Text(item.formattedPrice, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-          Expanded(child: AdminStatusChip(label: availLabel, color: availColor)),
-          SizedBox(width: 80, child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            GestureDetector(onTap: () => _showItemForm(context, item), child: const Icon(Icons.edit_rounded, size: 16, color: AppColors.textSecondary)),
-            const SizedBox(width: 12),
-            GestureDetector(onTap: () => _confirmDelete(context, item), child: const Icon(Icons.delete_rounded, size: 16, color: Color(0xFFE03E3E))),
-          ])),
-        ],
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 54, height: 54,
+            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(14)),
+            child: Icon(item.icon, color: AppColors.primary, size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(item.name, style: const TextStyle(fontFamily: 'Sora', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 12),
+                    AdminStatusChip(label: availLabel, color: availColor),
+                  ]
+                ),
+                const SizedBox(height: 6),
+                Text(item.description, style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(item.formattedPrice, style: const TextStyle(fontFamily: 'Sora', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    const SizedBox(width: 12),
+                    Text('· $catLabel', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textMuted)),
+                  ]
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _iconBtn(Icons.edit_rounded, () => _showItemForm(context, item)),
+              const SizedBox(width: 8),
+              _iconBtn(Icons.delete_rounded, () => _confirmDelete(context, item), color: const Color(0xFFE03E3E)),
+            ]
+          )
+        ]
+      )
     );
   }
 
@@ -127,13 +165,13 @@ class _AdminShopPageState extends State<AdminShopPage> {
     return GestureDetector(
       onTap: () { setState(() => _filter = cat); _applyFilter(); },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: active ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: active ? AppColors.primary : AppColors.border),
         ),
-        child: Text(label, style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.textSecondary)),
+        child: Text(label, style: TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.textSecondary)),
       ),
     );
   }

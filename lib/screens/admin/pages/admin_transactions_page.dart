@@ -49,7 +49,7 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
       children: [
         // Top bar
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           color: Colors.white,
           child: Column(
             children: [
@@ -88,34 +88,23 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
         ),
         // Summary
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           color: AppColors.background,
           child: Row(children: [
-            Text('${_filtered.length} records', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary)),
+            Text('${_filtered.length} records', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary)),
             const Spacer(),
-            Text('+₦${_totalCredit.toStringAsFixed(0)} credit', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF00B37E))),
-            const SizedBox(width: 12),
-            Text('-₦${_totalDebit.toStringAsFixed(0)} debit', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFE03E3E))),
+            Text('+₦${_totalCredit.toStringAsFixed(0)} credit', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF00B37E))),
+            const SizedBox(width: 16),
+            Text('-₦${_totalDebit.toStringAsFixed(0)} debit', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFE03E3E))),
           ]),
         ),
         Container(height: 1, color: AppColors.border),
-        // Table header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          color: AppColors.background,
-          child: Row(children: const [
-            Expanded(flex: 3, child: Text('TITLE', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('TYPE', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('AMOUNT', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('DATE', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('RECEIPT', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-          ]),
-        ),
-        Container(height: 1, color: AppColors.border),
+        // No table header needed, we use rich list items
         Expanded(
           child: _filtered.isEmpty
               ? const Center(child: Text('No transactions match your filter.', style: TextStyle(fontFamily: 'Sora', color: AppColors.textMuted)))
               : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   itemCount: _filtered.length,
                   itemBuilder: (_, i) => _buildRow(_filtered[i]),
                 ),
@@ -127,24 +116,67 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
   Widget _buildRow(WalletTransaction tx) {
     final receiptColor = tx.receiptStatus == ReceiptStatus.available ? const Color(0xFF00B37E) : tx.receiptStatus == ReceiptStatus.pending ? const Color(0xFFE08C00) : const Color(0xFF6B7A99);
     final receiptLabel = tx.receiptStatus == ReceiptStatus.available ? 'Available' : tx.receiptStatus == ReceiptStatus.pending ? 'Pending' : 'N/A';
+    
+    IconData getIcon() {
+      if (tx.category == TxCategory.wifi) return Icons.wifi_rounded;
+      if (tx.category == TxCategory.transport) return Icons.directions_bus_rounded;
+      if (tx.category == TxCategory.refund) return Icons.replay_rounded;
+      return tx.isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded;
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-      decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.border))),
-      child: Row(
-        children: [
-          Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(tx.title, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(tx.subtitle, style: const TextStyle(fontFamily: 'Sora', fontSize: 10, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ])),
-          Expanded(child: AdminStatusChip(label: tx.categoryLabel, color: tx.categoryColor)),
-          Expanded(child: Text(
-            '${tx.isCredit ? '+' : '-'}₦${tx.amount.toStringAsFixed(0)}',
-            style: TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600, color: tx.isCredit ? const Color(0xFF00B37E) : const Color(0xFFE03E3E)),
-          )),
-          Expanded(child: Text('${tx.date.day}/${tx.date.month}/${tx.date.year}', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary))),
-          Expanded(child: AdminStatusChip(label: receiptLabel, color: receiptColor)),
-        ],
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 50, height: 50,
+            decoration: BoxDecoration(
+              color: tx.isCredit ? const Color(0xFF00B37E).withValues(alpha: 0.1) : const Color(0xFFE03E3E).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14)
+            ),
+            child: Icon(getIcon(), color: tx.isCredit ? const Color(0xFF00B37E) : const Color(0xFFE03E3E), size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(tx.title, style: const TextStyle(fontFamily: 'Sora', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${tx.isCredit ? '+' : '-'}₦${tx.amount.toStringAsFixed(0)}',
+                      style: TextStyle(fontFamily: 'Sora', fontSize: 16, fontWeight: FontWeight.w700, color: tx.isCredit ? const Color(0xFF00B37E) : AppColors.textPrimary),
+                    ),
+                  ]
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    AdminStatusChip(label: tx.categoryLabel, color: tx.categoryColor),
+                    if (tx.receiptStatus == ReceiptStatus.available)
+                      AdminStatusChip(label: 'Receipt', color: receiptColor),
+                    Text(tx.subtitle, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary)),
+                    Text('· ${tx.date.day.toString().padLeft(2, '0')}/${tx.date.month.toString().padLeft(2, '0')}/${tx.date.year}', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary)),
+                  ]
+                ),
+              ],
+            ),
+          ),
+        ]
+      )
     );
   }
 
@@ -152,13 +184,13 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
     return GestureDetector(
       onTap: () { setState(onTap); },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: active ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: active ? AppColors.primary : AppColors.border),
         ),
-        child: Text(label, style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.textSecondary)),
+        child: Text(label, style: TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.textSecondary)),
       ),
     );
   }

@@ -41,29 +41,37 @@ class _AdminTransportPageState extends State<AdminTransportPage>
       children: [
         // Summary
         Container(
-          padding: const EdgeInsets.all(16),
+          width: double.infinity,
           color: Colors.white,
-          child: Row(
-            children: [
-              _stat('Routes', '${_routes.length}', AppColors.primary),
-              const SizedBox(width: 12),
-              _stat('Active', '${_routes.where((r) => r.status == RouteStatus.active).length}', const Color(0xFF00B37E)),
-              const SizedBox(width: 12),
-              _stat('Vehicles', '${_vehicles.length}', const Color(0xFFE08C00)),
-              const SizedBox(width: 12),
-              _stat('Monthly Revenue', '₦1.39M', const Color(0xFF9B5CF6)),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Row(
+              children: [
+                _stat('Routes', '${_routes.length}', AppColors.primary),
+                const SizedBox(width: 16),
+                _stat('Active', '${_routes.where((r) => r.status == RouteStatus.active).length}', const Color(0xFF00B37E)),
+                const SizedBox(width: 16),
+                _stat('Vehicles', '${_vehicles.length}', const Color(0xFFE08C00)),
+                const SizedBox(width: 16),
+                _stat('Monthly Revenue', '₦1.39M', const Color(0xFF9B5CF6)),
+              ],
+            ),
           ),
         ),
         Container(height: 1, color: AppColors.border),
-        TabBar(
-          controller: _tab,
-          labelStyle: const TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontFamily: 'Sora', fontSize: 12),
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          tabs: const [Tab(text: 'Routes'), Tab(text: 'Vehicles')],
+        Container(
+          color: Colors.white,
+          child: TabBar(
+            controller: _tab,
+            labelStyle: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w500),
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primary,
+            indicatorWeight: 3,
+            tabs: const [Tab(height: 54, text: 'Routes'), Tab(height: 54, text: 'Vehicles')],
+          ),
         ),
         Container(height: 1, color: AppColors.border),
         Expanded(
@@ -77,15 +85,15 @@ class _AdminTransportPageState extends State<AdminTransportPage>
   }
 
   Widget _stat(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: TextStyle(fontFamily: 'Sora', fontSize: 16, fontWeight: FontWeight.w700, color: color)),
-          Text(label, style: const TextStyle(fontFamily: 'Sora', fontSize: 10, color: AppColors.textSecondary)),
-        ]),
-      ),
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value, style: TextStyle(fontFamily: 'Sora', fontSize: 24, fontWeight: FontWeight.w700, color: color)),
+        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary)),
+      ]),
     );
   }
 
@@ -96,10 +104,10 @@ class _AdminTransportPageState extends State<AdminTransportPage>
       itemBuilder: (_, i) {
         final route = _routes[i];
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2))]),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -114,17 +122,17 @@ class _AdminTransportPageState extends State<AdminTransportPage>
               Row(children: [
                 const Icon(Icons.location_on_rounded, size: 14, color: AppColors.textMuted),
                 const SizedBox(width: 4),
-                Text('${route.from}  →  ${route.to}', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Expanded(child: Text('${route.from}  →  ${route.to}', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ]),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _routeStat(Icons.payments_rounded, '₦${route.fare.toStringAsFixed(0)} / trip'),
-                  const SizedBox(width: 16),
                   _routeStat(Icons.directions_bus_rounded, '${route.vehicleCount} vehicles'),
-                  const SizedBox(width: 16),
                   _routeStat(Icons.people_rounded, '${route.dailyPassengers}/day'),
-                  const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(8)),
@@ -177,9 +185,10 @@ class _AdminTransportPageState extends State<AdminTransportPage>
         final statusColor = v.status == VehicleStatus.active ? const Color(0xFF00B37E) : v.status == VehicleStatus.maintenance ? const Color(0xFFE08C00) : const Color(0xFF6B7A99);
         final statusLabel = v.status == VehicleStatus.active ? 'Active' : v.status == VehicleStatus.maintenance ? 'Maintenance' : 'Inactive';
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 3))]),
           child: Row(
             children: [
               Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.directions_bus_filled_rounded, color: AppColors.primary, size: 22)),

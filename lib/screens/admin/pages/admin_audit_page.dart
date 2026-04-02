@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../models/admin/admin_models.dart';
 import '../../../services/admin/admin_service.dart';
 import '../../../theme/app_theme.dart';
@@ -80,32 +81,21 @@ class _AdminAuditPageState extends State<AdminAuditPage> {
           ),
         ),
         Container(height: 1, color: AppColors.border),
-        // Table header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          color: AppColors.background,
-          child: const Row(children: [
-            Expanded(flex: 2, child: Text('ADMIN', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(flex: 3, child: Text('ACTION', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(flex: 3, child: Text('TARGET', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(child: Text('MODULE', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-            Expanded(flex: 2, child: Text('TIMESTAMP', style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.8))),
-          ]),
-        ),
-        Container(height: 1, color: AppColors.border),
+        // No table header needed, we use rich list items
         Expanded(
           child: _filtered.isEmpty
               ? const Center(child: Text('No audit entries match.', style: TextStyle(fontFamily: 'Sora', color: AppColors.textMuted)))
               : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   itemCount: _filtered.length,
-                  itemBuilder: (_, i) => _buildRow(_filtered[i]),
+                  itemBuilder: (_, i) => _buildLogTile(_filtered[i]),
                 ),
         ),
       ],
     );
   }
 
-  Widget _buildRow(AuditLogEntry entry) {
+  Widget _buildLogTile(AuditLogEntry entry) {
     final moduleColors = {
       'Shop': const Color(0xFF9B5CF6),
       'Users': AppColors.primary,
@@ -116,27 +106,121 @@ class _AdminAuditPageState extends State<AdminAuditPage> {
     };
     final moduleColor = moduleColors[entry.module] ?? AppColors.textSecondary;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-      decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: AppColors.border))),
+    return GestureDetector(
+      onTap: () { HapticFeedback.selectionClick(); _showLogDetails(entry, moduleColor); },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(radius: 22, backgroundColor: AppColors.primarySurface, child: Text(entry.adminName.substring(0, 1), style: const TextStyle(fontFamily: 'Sora', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary))),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(entry.action, style: const TextStyle(fontFamily: 'Sora', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: moduleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                        child: Text(entry.module, style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: moduleColor), maxLines: 1),
+                      )
+                    ]
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(child: Text(entry.target, style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      const SizedBox(width: 12),
+                      Text('by ${entry.adminName}', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textMuted, fontStyle: FontStyle.italic)),
+                    ]
+                  )
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                 Text('${entry.timestamp.hour}:${entry.timestamp.minute.toString().padLeft(2, '0')}', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                 const SizedBox(height: 4),
+                 Text(entry.ipAddress, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textMuted)),
+              ]
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogDetails(AuditLogEntry entry, Color moduleColor) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: moduleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                  child: Text(entry.module, style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: moduleColor), maxLines: 1),
+                ),
+                const Spacer(),
+                Text('${entry.timestamp.day.toString().padLeft(2, '0')}/${entry.timestamp.month.toString().padLeft(2, '0')}/${entry.timestamp.year} — ${entry.timestamp.hour}:${entry.timestamp.minute.toString().padLeft(2, '0')}', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(entry.action, style: const TextStyle(fontFamily: 'Sora', fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text(entry.target, style: const TextStyle(fontFamily: 'Sora', fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 24),
+            Container(height: 1, color: AppColors.border),
+            const SizedBox(height: 20),
+            _detailRow('Log ID', entry.id),
+            _detailRow('Admin Name', entry.adminName),
+            _detailRow('IP Address', entry.ipAddress),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: TextButton.styleFrom(backgroundColor: AppColors.background, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                child: const Text('Close', style: TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(flex: 2, child: Row(children: [
-            CircleAvatar(radius: 14, backgroundColor: AppColors.primarySurface, child: Text(entry.adminName.substring(0, 1), style: const TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary))),
-            const SizedBox(width: 8),
-            Flexible(child: Text(entry.adminName, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          ])),
-          Expanded(flex: 3, child: Text(entry.action, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Expanded(flex: 3, child: Text(entry.target, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Expanded(child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(color: moduleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-            child: Text(entry.module, style: TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w600, color: moduleColor), maxLines: 1),
-          )),
-          Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${entry.timestamp.hour}:${entry.timestamp.minute.toString().padLeft(2, '0')}', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textPrimary)),
-            Text(entry.ipAddress, style: const TextStyle(fontFamily: 'Sora', fontSize: 9, color: AppColors.textMuted)),
-          ])),
+          SizedBox(width: 100, child: Text(label, style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary))),
+          Expanded(child: Text(value, style: const TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
         ],
       ),
     );

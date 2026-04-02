@@ -49,21 +49,11 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    return Row(
-      children: [
-        // Ticket list
-        SizedBox(
-          width: 320,
-          child: _buildTicketList(),
-        ),
-        Container(width: 1, color: AppColors.border),
-        // Detail view
-        Expanded(
-          child: _selected == null
-              ? const Center(child: Text('Select a ticket to view details', style: TextStyle(fontFamily: 'Sora', color: AppColors.textMuted)))
-              : _buildTicketDetail(_selected!),
-        ),
-      ],
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: _selected == null
+          ? Container(key: const ValueKey('list'), color: Colors.white, child: _buildTicketList())
+          : Container(key: const ValueKey('detail'), color: AppColors.background, child: _buildTicketDetail(_selected!)),
     );
   }
 
@@ -73,24 +63,25 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           color: Colors.white,
           child: Row(children: [
-            Text('${open.length} Open', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text('${open.length} Open', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(width: 8),
-            Text('· ${closed.length} Closed', style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary)),
+            Text('· ${closed.length} Closed', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, color: AppColors.textSecondary)),
           ]),
         ),
         Container(height: 1, color: AppColors.border),
         Expanded(
           child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
               if (open.isNotEmpty) ...[
-                Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 4), child: Text('OPEN', style: const TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 1))),
+                const Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 8), child: Text('OPEN', style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 1.2))),
                 ...open.map(_buildTicketTile),
               ],
               if (closed.isNotEmpty) ...[
-                Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 4), child: Text('CLOSED', style: const TextStyle(fontFamily: 'Sora', fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 1))),
+                const Padding(padding: EdgeInsets.fromLTRB(20, 20, 20, 8), child: Text('CLOSED', style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 1.2))),
                 ...closed.map(_buildTicketTile),
               ],
             ],
@@ -102,25 +93,33 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
 
   Widget _buildTicketTile(SupportTicket ticket) {
     final isSelected = _selected?.id == ticket.id;
-    return InkWell(
-      onTap: () { HapticFeedback.selectionClick(); setState(() => _selected = ticket); },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        color: isSelected ? AppColors.primarySurface : Colors.white,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text(ticket.id, style: const TextStyle(fontFamily: 'Sora', fontSize: 10, color: AppColors.textMuted))),
-            AdminStatusChip(label: ticket.statusLabel, color: ticket.statusColor),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () { HapticFeedback.selectionClick(); setState(() => _selected = ticket); },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primarySurface : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: isSelected ? Border.all(color: AppColors.primary.withValues(alpha: 0.2)) : Border.all(color: Colors.transparent),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(ticket.id, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textMuted))),
+              AdminStatusChip(label: ticket.statusLabel, color: ticket.statusColor),
+            ]),
+            const SizedBox(height: 10),
+            Text(ticket.subject, style: TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text(ticket.userName, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 8),
+              AdminStatusChip(label: ticket.priorityLabel, color: ticket.priorityColor),
+            ]),
           ]),
-          const SizedBox(height: 4),
-          Text(ticket.subject, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Row(children: [
-            Text(ticket.userName, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
-            const Spacer(),
-            AdminStatusChip(label: ticket.priorityLabel, color: ticket.priorityColor),
-          ]),
-        ]),
+        ),
       ),
     );
   }
@@ -130,16 +129,23 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
       children: [
         // Header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           color: Colors.white,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text(ticket.subject, style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+              GestureDetector(
+                onTap: () { HapticFeedback.selectionClick(); setState(() => _selected = null); },
+                child: Container(
+                  padding: const EdgeInsets.only(right: 16, top: 4, bottom: 4),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.textPrimary),
+                ),
+              ),
+              Expanded(child: Text(ticket.subject, style: const TextStyle(fontFamily: 'Sora', fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
               AdminStatusChip(label: ticket.statusLabel, color: ticket.statusColor),
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Row(children: [
-              Text('${ticket.userName} · ${ticket.id}', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
+              Text('${ticket.userName} · ${ticket.id}', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary)),
               const Spacer(),
               AdminStatusChip(label: ticket.priorityLabel, color: ticket.priorityColor),
             ]),
@@ -158,7 +164,7 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
         Container(height: 1, color: AppColors.border),
         // Reply bar
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
           color: Colors.white,
           child: Row(
             children: [
@@ -224,21 +230,22 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: isAdmin ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(14),
-                  topRight: const Radius.circular(14),
-                  bottomLeft: Radius.circular(isAdmin ? 14 : 4),
-                  bottomRight: Radius.circular(isAdmin ? 4 : 14),
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isAdmin ? 16 : 4),
+                  bottomRight: Radius.circular(isAdmin ? 4 : 16),
                 ),
                 border: isAdmin ? null : Border.all(color: AppColors.border),
+                boxShadow: isAdmin ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))],
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(msg.message, style: TextStyle(fontFamily: 'Sora', fontSize: 13, color: isAdmin ? Colors.white : AppColors.textPrimary, height: 1.5)),
-                const SizedBox(height: 4),
-                Text('${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}', style: TextStyle(fontFamily: 'Sora', fontSize: 10, color: isAdmin ? Colors.white54 : AppColors.textMuted)),
+                Text(msg.message, style: TextStyle(fontFamily: 'Sora', fontSize: 14, color: isAdmin ? Colors.white : AppColors.textPrimary, height: 1.5)),
+                const SizedBox(height: 6),
+                Text('${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}', style: TextStyle(fontFamily: 'Sora', fontSize: 11, color: isAdmin ? Colors.white54 : AppColors.textMuted)),
               ]),
             ),
           ),

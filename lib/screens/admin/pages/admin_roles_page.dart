@@ -14,6 +14,7 @@ class AdminRolesPage extends StatefulWidget {
 class _AdminRolesPageState extends State<AdminRolesPage> {
   List<RolePermission> _roles = [];
   bool _loading = true;
+  RolePermission? _selectedRole;
 
   @override
   void initState() { super.initState(); _load(); }
@@ -26,7 +27,15 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: _selectedRole == null ? _buildRolesList() : _buildRoleDetail(),
+    );
+  }
+
+  Widget _buildRolesList() {
     return SingleChildScrollView(
+      key: const ValueKey('list'),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,27 +77,30 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
       child: Column(
         children: [
           // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(color: role.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(Icons.verified_user_rounded, color: role.color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(role.roleName, style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  Text('${role.userCount} admin users', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
-                ]),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: role.color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-                  child: Text(role.roleName, style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w700, color: role.color)),
-                ),
-              ],
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _selectedRole = role);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: role.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.verified_user_rounded, color: role.color, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(role.roleName, style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text('${role.userCount} admin users', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
+                  ]),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                ],
+              ),
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
@@ -105,23 +117,114 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
                   runSpacing: 8,
                   children: modules.map((module) {
                     final hasAccess = role.permissions[module] ?? false;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: hasAccess ? role.color.withValues(alpha: 0.1) : AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: hasAccess ? role.color.withValues(alpha: 0.3) : AppColors.border),
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          role.permissions[module] = !hasAccess;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: hasAccess ? role.color.withValues(alpha: 0.1) : AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: hasAccess ? role.color.withValues(alpha: 0.3) : AppColors.border),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(hasAccess ? Icons.check_rounded : Icons.remove_rounded, size: 12, color: hasAccess ? role.color : AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(module, style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w500, color: hasAccess ? role.color : AppColors.textMuted)),
+                        ]),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(hasAccess ? Icons.check_rounded : Icons.remove_rounded, size: 12, color: hasAccess ? role.color : AppColors.textMuted),
-                        const SizedBox(width: 4),
-                        Text(module, style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w500, color: hasAccess ? role.color : AppColors.textMuted)),
-                      ]),
                     );
                   }).toList(),
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleDetail() {
+    final role = _selectedRole!;
+    // Use the dummy user logic conceptually to gather 'users in this role'
+    // Since AdminUser doesn't natively have a role inside dummy data, we will mock the count.
+    final usersInRole = adminUsers.take(role.userCount).toList();
+
+    return SingleChildScrollView(
+      key: ValueKey('detail-${role.id}'),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedRole = null);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: AppColors.textPrimary),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(role.roleName, style: const TextStyle(fontFamily: 'Sora', fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Text('Users assigned as ${role.roleName} (${role.userCount})', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          const SizedBox(height: 16),
+          if (usersInRole.isEmpty)
+            const Text('No users found.', style: TextStyle(fontFamily: 'Sora', fontSize: 14, color: AppColors.textMuted))
+          else
+            ...usersInRole.map((u) => _buildUserListTile(u)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserListTile(AdminUser user) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primarySurface,
+            child: Text(user.fullName.substring(0, 1), style: const TextStyle(fontFamily: 'Sora', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user.fullName, style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Text(user.email, style: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: const Color(0xFF00B37E).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+            child: const Text('Active', style: TextStyle(fontFamily: 'Sora', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF00B37E))),
           ),
         ],
       ),
