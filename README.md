@@ -33,49 +33,54 @@ lib/
 ## Setup
 
 ### 1. Add Sora Font
+
 Download Sora from Google Fonts: https://fonts.google.com/specimen/Sora
 
 Place the font files in `assets/fonts/`:
+
 - `Sora-Regular.ttf`
 - `Sora-Medium.ttf`
 - `Sora-SemiBold.ttf`
 - `Sora-Bold.ttf`
 
 ### 2. Create Assets Folders
+
 ```bash
 mkdir -p assets/fonts assets/images
 ```
 
 ### 3. Install Dependencies
+
 ```bash
 flutter pub get
 ```
 
 ### 4. Run
+
 ```bash
 flutter run
 ```
 
 ---
 
-## Backend Integration Notes (for your dev)
+## Backend Integration Notes
 
-The app uses placeholder/sample data. Replace these with real API calls:
+The app uses placeholder/sample data. Replace with real API calls:
 
-| Widget / Screen | Replace with |
-|---|---|
+| Widget / Screen                                  | Replace with                             |
+| ------------------------------------------------ | ---------------------------------------- |
 | `sampleTransactions` in `transaction_model.dart` | Supabase query from `transactions` table |
-| `balance: 50.00` in `home_screen.dart` | Supabase user wallet balance |
-| `userName: 'Oluwaferanmi'` | Auth session user name |
-| `STU/2024/00142` in `balance_card.dart` | Student ID from user profile |
-| `onTap: () {}` on Deposit/Transfer buttons | Navigate to deposit/transfer screens |
+| `balance: 50.00` in `home_screen.dart`           | Supabase user wallet balance             |
+| `userName: 'Oluwaferanmi'`                       | Auth session user name                   |
+| `STU/2024/00142` in `balance_card.dart`          | Student ID from user profile             |
+| `onTap: () {}` on Deposit/Transfer buttons       | Navigate to deposit/transfer screens     |
 
 ---
 
 ## Design System
 
 - **Primary**: `#1A3FD8` (Deep Blue)
-- **Background**: `#F5F7FF`  
+- **Background**: `#F5F7FF`
 - **Success**: `#00B37E`
 - **Error**: `#E03E3E`
 - **Font**: Sora (Google Fonts)

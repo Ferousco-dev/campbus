@@ -12,6 +12,7 @@ import 'transactions_screen.dart';
 import 'profile/security_center_screen.dart';
 import 'profile/customer_service_screen.dart';
 import 'profile/invite_friends_screen.dart';
+import 'admin/admin_shell.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -320,6 +321,20 @@ class ProfileScreen extends StatelessWidget {
 
             ProfileMenuSection(
               items: [
+                ProfileMenuItem(
+                  icon: Icons.admin_panel_settings_rounded,
+                  iconColor: const Color(0xFF1A3FD8),
+                  iconBg: const Color(0xFFEEF2FF),
+                  label: 'Admin Panel',
+                  sublabel: 'Manage app data & users',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AdminShell()),
+                    );
+                  },
+                ),
                 ProfileMenuItem(
                   icon: Icons.receipt_long_rounded,
                   label: 'Transaction History',
