@@ -55,7 +55,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           // ── KPI Cards ─────────────────────────────────────────────
           const AdminSectionHeader(title: 'Overview'),
           const SizedBox(height: 16),
-          _buildKPIGrid(),
+          _buildKPIGrid(context),
           const SizedBox(height: 28),
 
           // ── Revenue Chart ─────────────────────────────────────────
@@ -148,7 +148,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _buildKPIGrid() {
+  Widget _buildKPIGrid(BuildContext context) {
     final kpis = [
       AdminKPI(title: 'Total Users', value: '${_kpis['totalUsers']}', change: '+12.4%', isPositive: true, icon: Icons.people_rounded, color: AppColors.primary, bgColor: AppColors.primarySurface),
       AdminKPI(title: 'Active Cards', value: '${_kpis['activeCards']}', change: '+5.2%', isPositive: true, icon: Icons.credit_card_rounded, color: const Color(0xFF00B37E), bgColor: const Color(0xFFE6FAF4)),
@@ -158,15 +158,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       AdminKPI(title: 'Shop Items', value: '${_kpis['shopItems']}', change: '+2', isPositive: true, icon: Icons.storefront_rounded, color: const Color(0xFF00A3CC), bgColor: const Color(0xFFE5F8FC)),
     ];
 
+    final width = MediaQuery.of(context).size.width;
+    final int crossAxisCount = width < 600 ? 1 : (width < 900 ? 2 : 3);
+    final double childAspectRatio = width < 600 ? 3.0 : 1.8;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: kpis.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.8,
+        childAspectRatio: childAspectRatio,
       ),
       itemBuilder: (_, i) => AdminKpiCard(kpi: kpis[i]),
     );

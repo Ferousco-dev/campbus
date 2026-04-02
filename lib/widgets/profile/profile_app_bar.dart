@@ -3,8 +3,9 @@ import '../../theme/app_theme.dart';
 
 class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String name;
+  final VoidCallback? onSettingsTap;
 
-  const ProfileAppBar({super.key, required this.name});
+  const ProfileAppBar({super.key, required this.name, this.onSettingsTap});
 
   @override
   Size get preferredSize => const Size.fromHeight(70);
@@ -79,9 +80,9 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ],
               ),
               const Spacer(),
-              // Settings icon
+              // Settings icon → Admin Panel
               GestureDetector(
-                onTap: () {},
+                onTap: onSettingsTap ?? () {},
                 child: Container(
                   width: 38,
                   height: 38,

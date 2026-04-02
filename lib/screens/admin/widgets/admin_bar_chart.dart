@@ -24,7 +24,7 @@ class AdminBarChart extends StatelessWidget {
         0, (m, d) => (d[valueKey] as double) > m ? d[valueKey] as double : m);
 
     return SizedBox(
-      height: height + 24,
+      height: height + 40,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: data.map((d) {

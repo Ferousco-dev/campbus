@@ -218,7 +218,16 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: const ProfileAppBar(name: 'Feranmi'),
+        appBar: ProfileAppBar(
+          name: 'Feranmi',
+          onSettingsTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminShell()),
+            );
+          },
+        ),
         body: ListView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 36),

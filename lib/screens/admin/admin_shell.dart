@@ -55,6 +55,8 @@ class _AdminShellState extends State<AdminShell>
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -62,31 +64,37 @@ class _AdminShellState extends State<AdminShell>
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: Row(
-          children: [
-            // ── Sidebar ─────────────────────────────────────────────
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              width: _sidebarExpanded ? 240 : 72,
-              child: _buildSidebar(),
-            ),
-
-            // ── Content ─────────────────────────────────────────────
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTopBar(),
-                  Expanded(
-                    child: IndexedStack(
-                      index: _selectedIndex,
-                      children: _pages,
-                    ),
+        drawer: isMobile ? Drawer(child: _buildSidebar()) : null,
+        body: Builder(
+          builder: (context) {
+            return Row(
+              children: [
+                // ── Sidebar ─────────────────────────────────────────────
+                if (!isMobile)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    width: _sidebarExpanded ? 240 : 72,
+                    child: _buildSidebar(),
                   ),
-                ],
-              ),
-            ),
-          ],
+
+                // ── Content ─────────────────────────────────────────────
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildTopBar(context, isMobile),
+                      Expanded(
+                        child: IndexedStack(
+                          index: _selectedIndex,
+                          children: _pages,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }
         ),
       ),
     );
@@ -185,6 +193,9 @@ class _AdminShellState extends State<AdminShell>
         onTap: () {
           HapticFeedback.selectionClick();
           setState(() => _selectedIndex = index);
+          if (MediaQuery.of(context).size.width < 768) {
+            Navigator.pop(context); // Close drawer on mobile
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
@@ -269,92 +280,109 @@ class _AdminShellState extends State<AdminShell>
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(BuildContext context, bool isMobile) {
     final title = _navItems[_selectedIndex].label;
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          // Toggle sidebar
-          GestureDetector(
-            onTap: () => setState(() => _sidebarExpanded = !_sidebarExpanded),
-            child: Container(
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            // Toggle sidebar
+            GestureDetector(
+              onTap: () {
+                if (isMobile) {
+                  Scaffold.of(context).openDrawer();
+                } else {
+                  setState(() => _sidebarExpanded = !_sidebarExpanded);
+                }
+              },
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  (!isMobile && _sidebarExpanded)
+                      ? Icons.menu_open_rounded
+                      : Icons.menu_rounded,
+                  size: 18,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Sora',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Admin badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.shield_rounded,
+                      size: 12, color: AppColors.primary),
+                  SizedBox(width: 5),
+                  Text(
+                    'Super Admin',
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Avatar
+            Container(
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.primary,
+                shape: BoxShape.circle,
               ),
-              child: Icon(
-                _sidebarExpanded ? Icons.menu_open_rounded : Icons.menu_rounded,
-                size: 18,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Sora',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const Spacer(),
-          // Admin badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.shield_rounded, size: 12, color: AppColors.primary),
-                SizedBox(width: 5),
-                Text(
-                  'Super Admin',
+              child: const Center(
+                child: Text(
+                  'A',
                   style: TextStyle(
                     fontFamily: 'Sora',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Avatar
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'A',
-                style: TextStyle(
-                  fontFamily: 'Sora',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

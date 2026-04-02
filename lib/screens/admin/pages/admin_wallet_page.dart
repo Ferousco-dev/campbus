@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import '../../../models/wallet_models.dart';
 import '../../../services/admin/admin_service.dart';
 import '../../../theme/app_theme.dart';
-import '../widgets/admin_section_header.dart';
-import '../widgets/admin_bar_chart.dart';
 
 class AdminWalletPage extends StatefulWidget {
   const AdminWalletPage({super.key});
@@ -45,14 +43,23 @@ class _AdminWalletPageState extends State<AdminWalletPage>
         Container(
           padding: const EdgeInsets.all(20),
           color: Colors.white,
-          child: Row(
-            children: [
-              _summaryCard('Total Top-ups', '₦${(_topups.fold<double>(0, (s, t) => s + t.amount) / 1000).toStringAsFixed(1)}K', const Color(0xFF00B37E), Icons.add_circle_rounded),
-              const SizedBox(width: 12),
-              _summaryCard('Total Refunds', '₦${(_refunds.fold<double>(0, (s, t) => s + t.amount)).toStringAsFixed(0)}', const Color(0xFF00A3CC), Icons.replay_rounded),
-              const SizedBox(width: 12),
-              _summaryCard('Net Flow', '₦${(_transactions.where((t) => t.isCredit).fold<double>(0, (s, t) => s + t.amount) - _transactions.where((t) => !t.isCredit).fold<double>(0, (s, t) => s + t.amount)).toStringAsFixed(0)}', AppColors.primary, Icons.swap_vert_rounded),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isMobile = constraints.maxWidth < 600;
+              final cards = [
+                _summaryCard('Total Top-ups', '₦${(_topups.fold<double>(0, (s, t) => s + t.amount) / 1000).toStringAsFixed(1)}K', const Color(0xFF00B37E), Icons.add_circle_rounded, isMobile),
+                if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 12),
+                _summaryCard('Total Refunds', '₦${(_refunds.fold<double>(0, (s, t) => s + t.amount)).toStringAsFixed(0)}', const Color(0xFF00A3CC), Icons.replay_rounded, isMobile),
+                if (isMobile) const SizedBox(height: 12) else const SizedBox(width: 12),
+                _summaryCard('Net Flow', '₦${(_transactions.where((t) => t.isCredit).fold<double>(0, (s, t) => s + t.amount) - _transactions.where((t) => !t.isCredit).fold<double>(0, (s, t) => s + t.amount)).toStringAsFixed(0)}', AppColors.primary, Icons.swap_vert_rounded, isMobile),
+              ];
+              
+              if (isMobile) {
+                return Column(children: cards);
+              } else {
+                return Row(children: cards);
+              }
+            }
           ),
         ),
         Container(height: 1, color: AppColors.border),
@@ -82,26 +89,28 @@ class _AdminWalletPageState extends State<AdminWalletPage>
     );
   }
 
-  Widget _summaryCard(String label, String value, Color color, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontFamily: 'Sora', fontSize: 18, fontWeight: FontWeight.w700, color: color)),
-            Text(label, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
-          ],
-        ),
+  Widget _summaryCard(String label, String value, Color color, IconData icon, bool isMobile) {
+    final content = Container(
+      width: isMobile ? double.infinity : null,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontFamily: 'Sora', fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+          Text(label, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
+        ],
       ),
     );
+    
+    if (isMobile) return content;
+    return Expanded(child: content);
   }
 
   Widget _buildTxList(List<WalletTransaction> txs, String emptyMsg) {

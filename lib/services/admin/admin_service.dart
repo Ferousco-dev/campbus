@@ -2,9 +2,9 @@
 // Replace these stubs with real HTTP/Supabase calls when backend is ready.
 // Each method returns a Future with simulated network delay.
 
-import '../admin/admin_models.dart';
-import '../shop_item_model.dart';
-import '../wallet_models.dart';
+import '../../models/admin/admin_models.dart';
+import '../../models/shop_item_model.dart';
+import '../../models/wallet_models.dart';
 
 class AdminService {
   static const _delay = Duration(milliseconds: 400);
