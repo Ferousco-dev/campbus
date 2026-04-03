@@ -102,7 +102,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
           // Audience selector
           const Text('Audience', style: TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
-          Wrap(spacing: 8, children: ['All Users', 'Tier 1', 'Tier 2'].map((a) {
+          Wrap(spacing: 8, children: ['All Users', 'Tier 1', 'Tier 2', 'Tier 3'].map((a) {
             final active = _audience == a;
             return GestureDetector(
               onTap: () => setState(() => _audience = a),

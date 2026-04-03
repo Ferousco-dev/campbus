@@ -191,8 +191,10 @@ class AdminService {
     required String message,
     required String type,
     required String audience,
+    bool fanOut = true,
   }) async {
-    await _firestore.collection('admin_notifications').add({
+    final adminRef = _firestore.collection('admin_notifications').doc();
+    await adminRef.set({
       'title': title,
       'message': message,
       'type': type,
@@ -201,6 +203,54 @@ class AdminService {
       'delivered': 0,
       'total': 0,
     });
+
+    if (!fanOut) return true;
+
+    final userQuery = _audienceQuery(audience);
+    final usersSnap = await userQuery.get();
+    final total = usersSnap.size;
+    if (total == 0) {
+      await adminRef.set({'total': 0, 'delivered': 0}, SetOptions(merge: true));
+      return true;
+    }
+
+    var delivered = 0;
+    var batch = _firestore.batch();
+    var batchCount = 0;
+
+    for (final userDoc in usersSnap.docs) {
+      final ref = _firestore
+          .collection('users')
+          .doc(userDoc.id)
+          .collection('notifications')
+          .doc();
+      batch.set(ref, {
+        'title': title,
+        'message': message,
+        'type': type,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': false,
+        'audience': audience,
+      });
+      batchCount++;
+
+      if (batchCount >= 400) {
+        await batch.commit();
+        delivered += batchCount;
+        batch = _firestore.batch();
+        batchCount = 0;
+      }
+    }
+
+    if (batchCount > 0) {
+      await batch.commit();
+      delivered += batchCount;
+    }
+
+    await adminRef.set({
+      'total': total,
+      'delivered': delivered,
+    }, SetOptions(merge: true));
     return true;
   }
 
@@ -393,6 +443,21 @@ class AdminService {
 
   static bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  static Query<Map<String, dynamic>> _audienceQuery(String audience) {
+    final usersRef = _firestore.collection('users');
+    switch (audience) {
+      case 'Tier 1':
+        return usersRef.where('tier', isEqualTo: 'tier1');
+      case 'Tier 2':
+        return usersRef.where('tier', isEqualTo: 'tier2');
+      case 'Tier 3':
+        return usersRef.where('tier', isEqualTo: 'tier3');
+      case 'All Users':
+      default:
+        return usersRef;
+    }
   }
 
   static double _sumCreditsInRange(
