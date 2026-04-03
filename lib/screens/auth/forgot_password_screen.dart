@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../services/auth/auth_service.dart';
 import '../../theme/app_theme.dart';
-import 'otp_verification_screen.dart';
+import '../../utils/auth/validators.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -11,20 +13,43 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+  String? _emailError;
+  bool _isSending = false;
 
-  void _onSendCode() {
+  Future<void> _onSendReset() async {
     // Unfocus
     FocusScope.of(context).unfocus();
-    
-    // Hop to OTP screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OtpVerificationScreen(
-          email: _emailController.text,
+
+    final email = _emailController.text.trim();
+    final emailError = AuthValidators.email(email);
+    if (emailError != null) {
+      setState(() => _emailError = emailError);
+      return;
+    }
+
+    setState(() => _isSending = true);
+    try {
+      await AuthService.sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reset link sent. Check your email.'),
         ),
-      ),
-    );
+      );
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final message = e.code == 'user-not-found'
+          ? 'No account found for that email.'
+          : 'Unable to send reset email. Try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
   }
 
   @override
@@ -62,7 +87,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Enter the email address associated with your account. We\'ll send you a 4-digit verification code.',
+                'Enter the email address associated with your account. We\'ll send you a reset link.',
                 style: TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 14,
@@ -87,7 +112,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) {
+                  setState(() {
+                    _emailError = null;
+                  });
+                },
                 style: const TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 14,
@@ -104,6 +133,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
               ),
+
+              if (_emailError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _emailError!,
+                  style: const TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.error,
+                  ),
+                ),
+              ],
               
               const SizedBox(height: 48),
               
@@ -112,7 +154,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _emailController.text.contains('@') ? _onSendCode : null,
+                  onPressed: _emailController.text.contains('@') && !_isSending
+                      ? _onSendReset
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
@@ -121,15 +165,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Send Code',
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isSending
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Send Reset Link',
+                          style: TextStyle(
+                            fontFamily: 'Sora',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ],

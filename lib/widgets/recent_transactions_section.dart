@@ -77,11 +77,27 @@ class RecentTransactionsSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             child: Column(
               children: [
-                for (int i = 0; i < displayList.length; i++)
-                  TransactionListItem(
-                    transaction: displayList[i],
-                    showDivider: i < displayList.length - 1,
-                  ),
+                if (displayList.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 20,
+                    ),
+                    child: Text(
+                      'No transactions yet.',
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  )
+                else
+                  for (int i = 0; i < displayList.length; i++)
+                    TransactionListItem(
+                      transaction: displayList[i],
+                      showDivider: i < displayList.length - 1,
+                    ),
               ],
             ),
           ),

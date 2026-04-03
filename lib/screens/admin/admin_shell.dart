@@ -128,7 +128,7 @@ class _AdminShellState extends State<AdminShell>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'CampusRide',
+                            'Campus Wallet',
                             style: TextStyle(
                               fontFamily: 'Sora',
                               fontSize: 14,

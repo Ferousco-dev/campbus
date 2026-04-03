@@ -1,5 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import '../services/auth/auth_service.dart';
+import '../services/user/user_profile_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/profile/profile_app_bar.dart';
 import '../widgets/profile/profile_header_card.dart';
@@ -16,6 +21,49 @@ import 'admin/admin_shell.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  String _tierLabel(String? value) {
+    switch (value) {
+      case 'tier2':
+        return 'Tier 2';
+      case 'tier3':
+        return 'Tier 3';
+      case 'tier1':
+      default:
+        return 'Tier 1';
+    }
+  }
+
+  bool _canUpgradeTier(String? value) => value != 'tier3';
+
+  DateTime? _dateFromFirestore(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
+  }
+
+  String _formatDate(DateTime? value) {
+    if (value == null) return 'Not set';
+    return DateFormat('MMM d, yyyy').format(value);
+  }
+
+  String _displayValue(String? value) {
+    if (value == null) return 'Not set';
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? 'Not set' : trimmed;
+  }
+
+  bool _hasValue(String? value) =>
+      value != null && value.trim().isNotEmpty;
+
+  String _addressText(Map<String, dynamic>? address) {
+    final street = (address?['street'] as String?)?.trim() ?? '';
+    final cityState = (address?['cityState'] as String?)?.trim() ?? '';
+    if (street.isEmpty && cityState.isEmpty) return 'Not set';
+    if (street.isEmpty) return cityState;
+    if (cityState.isEmpty) return street;
+    return '$street, $cityState';
+  }
 
   void _showRatingDialog(BuildContext context) {
     showModalBottomSheet(
@@ -47,7 +95,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Enjoying CampusRide?',
+                  'Enjoying Campus Wallet?',
                   style: TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 18,
@@ -211,36 +259,128 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text(
+            'Please sign in to view your profile.',
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
       ),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: ProfileAppBar(
-          name: 'Feranmi',
-          onSettingsTap: () {
-            HapticFeedback.lightImpact();
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AdminShell()),
+      child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: UserProfileService.userStream(user.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              backgroundColor: AppColors.background,
+              body: Center(child: CircularProgressIndicator()),
             );
-          },
-        ),
-        body: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 36),
-          children: [
-            const SizedBox(height: 20),
+          }
+          final data = snapshot.data?.data() ?? {};
+          final fullNameRaw =
+              data['fullName'] as String? ?? user.displayName ?? '';
+          final nicknameRaw = data['nickname'] as String?;
+          final fullName = _displayValue(fullNameRaw);
+          final nickname = _displayValue(
+              nicknameRaw ?? (fullNameRaw.isNotEmpty ? fullNameRaw.split(' ').first : ''));
+          final greetingName = _hasValue(nicknameRaw)
+              ? nicknameRaw!.trim()
+              : (fullNameRaw.isNotEmpty
+                  ? fullNameRaw.split(' ').first
+                  : 'User');
+          final studentId = _displayValue(
+              data['studentId'] as String? ??
+                  data['matricNumber'] as String?);
+          final tierValue = data['tier'] as String? ?? 'tier1';
+          final phoneRaw = data['phone'] as String?;
+          final phone = _displayValue(phoneRaw);
+          final gender = _displayValue(data['gender'] as String?);
+          final dob = _formatDate(_dateFromFirestore(data['dateOfBirth']));
+          final emailRaw = data['email'] as String? ?? user.email;
+          final email = _displayValue(emailRaw);
+          final addressText =
+              _addressText(data['address'] as Map<String, dynamic>?);
+          final isEmailVerified =
+              data['isEmailVerified'] as bool? ?? user.emailVerified;
+          final isPhoneVerified = data['isVerified'] as bool? ?? false;
+          final role = (data['role'] as String?) ?? 'user';
+          final isAdmin = role == 'superAdmin' ||
+              role == 'moderator' ||
+              role == 'supportAgent' ||
+              role == 'shopManager';
 
-            // Header card
-            const ProfileHeaderCard(
-              name: 'Feranmi',
-              studentId: 'STU/2024/00142',
-              tier: 'Tier 1',
-              canUpgrade: true,
+          final accountItems = <ProfileMenuItem>[
+            if (isAdmin)
+              ProfileMenuItem(
+                icon: Icons.admin_panel_settings_rounded,
+                iconColor: const Color(0xFF1A3FD8),
+                iconBg: const Color(0xFFEEF2FF),
+                label: 'Admin Panel',
+                sublabel: 'Manage app data & users',
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminShell()),
+                  );
+                },
+              ),
+            ProfileMenuItem(
+              icon: Icons.receipt_long_rounded,
+              label: 'Transaction History',
+              sublabel: 'View all your transactions',
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TransactionsScreen()),
+                );
+              },
             ),
+          ];
+
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: ProfileAppBar(
+              name: greetingName,
+              onSettingsTap: isAdmin
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const AdminShell()),
+                      );
+                    }
+                  : null,
+            ),
+            body: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 36),
+              children: [
+                const SizedBox(height: 20),
+
+                // Header card
+                ProfileHeaderCard(
+                  name: fullName,
+                  studentId: studentId,
+                  tier: _tierLabel(tierValue),
+                  canUpgrade: _canUpgradeTier(tierValue),
+                ),
 
             const SizedBox(height: 20),
 
@@ -262,50 +402,79 @@ class ProfileScreen extends StatelessWidget {
               rows: [
                 ProfileInfoRow(
                   label: 'Full Name',
-                  value: 'OLUWAFERANMI I. ORESAJO',
+                  value: fullName,
                 ),
                 ProfileInfoRow(
                   label: 'Mobile Number',
-                  value: '+234 907 218 2889',
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _showVerificationStatus(context, 'Mobile Number', '+234 907 218 2889', true);
-                  },
+                  value: phone,
+                  onTap: _hasValue(phoneRaw)
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _showVerificationStatus(
+                            context,
+                            'Mobile Number',
+                            phone,
+                            isPhoneVerified,
+                          );
+                        }
+                      : null,
                 ),
                 ProfileInfoRow(
                   label: 'Nickname',
-                  value: 'Feranmi',
+                  value: nickname,
                   onTap: () {
                     HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const EditNicknameScreen(currentNickname: 'Feranmi')),
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            EditNicknameScreen(currentNickname: nicknameRaw ?? ''),
+                      ),
                     );
                   },
                 ),
                 ProfileInfoRow(
                   label: 'Gender',
-                  value: 'Male',
+                  value: gender,
                 ),
                 ProfileInfoRow(
                   label: 'Date of Birth',
-                  value: '**-**-19',
+                  value: dob,
                 ),
                 ProfileInfoRow(
                   label: 'Email',
-                  value: 'f*@gmail.com',
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _showVerificationStatus(context, 'Email Address', 'f*@gmail.com', true);
-                  },
+                  value: email,
+                  onTap: _hasValue(emailRaw)
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _showVerificationStatus(
+                            context,
+                            'Email Address',
+                            email,
+                            isEmailVerified,
+                          );
+                        }
+                      : null,
                 ),
                 ProfileInfoRow(
                   label: 'Address',
+                  value: addressText,
                   onTap: () {
                     HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const EditAddressScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => EditAddressScreen(
+                          currentStreet:
+                              (data['address'] as Map<String, dynamic>?)?['street']
+                                      as String? ??
+                                  '',
+                          currentCityState:
+                              (data['address'] as Map<String, dynamic>?)?['cityState']
+                                      as String? ??
+                                  '',
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -329,34 +498,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 12),
 
             ProfileMenuSection(
-              items: [
-                ProfileMenuItem(
-                  icon: Icons.admin_panel_settings_rounded,
-                  iconColor: const Color(0xFF1A3FD8),
-                  iconBg: const Color(0xFFEEF2FF),
-                  label: 'Admin Panel',
-                  sublabel: 'Manage app data & users',
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AdminShell()),
-                    );
-                  },
-                ),
-                ProfileMenuItem(
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Transaction History',
-                  sublabel: 'View all your transactions',
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const TransactionsScreen()),
-                    );
-                  },
-                ),
-              ],
+              items: accountItems,
             ),
 
             const SizedBox(height: 20),
@@ -449,7 +591,7 @@ class ProfileScreen extends StatelessWidget {
             // Version
             Center(
               child: Text(
-                'CampusRide v1.0.0',
+                'Campus Wallet v1.0.0',
                 style: const TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 11,
@@ -457,8 +599,10 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -501,8 +645,10 @@ class _LogoutDialog extends StatelessWidget {
           ),
         ),
         TextButton(
-          onPressed: () {
+          onPressed: () async {
             Navigator.pop(context); // Close dialog
+            await AuthService.signOut();
+            if (!context.mounted) return;
             Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
           },
           child: const Text(

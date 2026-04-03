@@ -54,7 +54,7 @@ class _AdminTransportPageState extends State<AdminTransportPage>
                 const SizedBox(width: 16),
                 _stat('Vehicles', '${_vehicles.length}', const Color(0xFFE08C00)),
                 const SizedBox(width: 16),
-                _stat('Monthly Revenue', '₦1.39M', const Color(0xFF9B5CF6)),
+                _stat('Monthly Revenue', _formatCompactCurrency(_routes.fold<double>(0, (sum, r) => sum + r.monthlyRevenue)), const Color(0xFF9B5CF6)),
               ],
             ),
           ),
@@ -144,9 +144,9 @@ class _AdminTransportPageState extends State<AdminTransportPage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _actionBtn('Edit Fare', () {}),
+                  _actionBtn('Edit Fare', () => _editFare(route)),
                   const SizedBox(width: 8),
-                  _actionBtn(route.status == RouteStatus.active ? 'Deactivate' : 'Activate', () {}, danger: route.status == RouteStatus.active),
+                  _actionBtn(route.status == RouteStatus.active ? 'Deactivate' : 'Activate', () => _toggleRouteStatus(route), danger: route.status == RouteStatus.active),
                 ],
               ),
             ],
@@ -203,5 +203,103 @@ class _AdminTransportPageState extends State<AdminTransportPage>
         );
       },
     );
+  }
+
+  void _editFare(AdminRoute route) {
+    final controller = TextEditingController(text: route.fare.toStringAsFixed(0));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Update Fare', style: TextStyle(fontFamily: 'Sora', fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text(route.name, style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontFamily: 'Sora', fontSize: 14, color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Fare (₦)',
+                labelStyle: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.background,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final value = double.tryParse(controller.text.trim()) ?? 0;
+                  if (value <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Enter a valid fare amount', style: TextStyle(fontFamily: 'Sora')),
+                      backgroundColor: Color(0xFFE03E3E),
+                      behavior: SnackBarBehavior.floating,
+                      margin: EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    ));
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  await AdminService.updateRoute(route.id, fare: value);
+                  _replaceRoute(route.copyWith(fare: value));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Fare updated ✓', style: TextStyle(fontFamily: 'Sora')),
+                    backgroundColor: Color(0xFF00B37E),
+                    behavior: SnackBarBehavior.floating,
+                    margin: EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  ));
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+                child: const Text('Save Fare', style: TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggleRouteStatus(AdminRoute route) async {
+    final nextStatus =
+        route.status == RouteStatus.active ? RouteStatus.inactive : RouteStatus.active;
+    await AdminService.updateRoute(route.id, status: nextStatus);
+    _replaceRoute(route.copyWith(status: nextStatus));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(nextStatus == RouteStatus.active ? 'Route activated ✓' : 'Route deactivated ✓', style: const TextStyle(fontFamily: 'Sora')),
+      backgroundColor: nextStatus == RouteStatus.active ? const Color(0xFF00B37E) : const Color(0xFFE03E3E),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+    ));
+  }
+
+  void _replaceRoute(AdminRoute updated) {
+    setState(() {
+      _routes =
+          _routes.map((r) => r.id == updated.id ? updated : r).toList();
+    });
+  }
+
+  String _formatCompactCurrency(double value) {
+    if (value >= 1000000) {
+      return '₦${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (value >= 1000) {
+      return '₦${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return '₦${value.toStringAsFixed(0)}';
   }
 }

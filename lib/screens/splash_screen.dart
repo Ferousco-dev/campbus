@@ -105,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   
                   // Text with Sweep/Shimmer effect
                   const ShimmerText(
-                    text: 'CampusRide',
+                    text: 'Campus Wallet',
                     style: TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 34,

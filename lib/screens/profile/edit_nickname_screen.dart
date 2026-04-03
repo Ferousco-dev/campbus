@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/user/user_profile_service.dart';
 
 class EditNicknameScreen extends StatefulWidget {
   final String currentNickname;
@@ -26,19 +28,38 @@ class _EditNicknameScreenState extends State<EditNicknameScreen> {
     super.dispose();
   }
 
-  void _saveNickname() {
-    final text = _controller.text.trim().toLowerCase();
-    
-    if (text.startsWith('bus') || text.startsWith('tri')) {
+  Future<void> _saveNickname() async {
+    final raw = _controller.text.trim();
+    final lower = raw.toLowerCase();
+
+    if (lower.startsWith('bus') || lower.startsWith('tri')) {
       setState(() {
         _errorMessage = "Nicknames cannot begin with 'bus' or 'tri' for security reasons.";
       });
       return;
     }
-    
+
     setState(() => _errorMessage = null);
 
-    // Front-end only: just pop back or show success message
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Please sign in to update your nickname.',
+            style: TextStyle(fontFamily: 'Sora', fontSize: 13),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        ),
+      );
+      return;
+    }
+
+    await UserProfileService.updateNickname(user.uid, raw);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text(

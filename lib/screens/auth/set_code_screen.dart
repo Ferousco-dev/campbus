@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../models/auth/registration_payload.dart';
+import '../../services/auth/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/auth/code_dots.dart';
 import '../../widgets/auth/auth_keypad.dart';
@@ -8,7 +11,14 @@ import '../../utils/auth/validators.dart';
 
 /// Set 6-Digit Code screen — 2-step flow: enter code → confirm code.
 class SetCodeScreen extends StatefulWidget {
-  const SetCodeScreen({super.key});
+  final RegistrationPayload? registration;
+  final bool isReset;
+
+  const SetCodeScreen({
+    super.key,
+    this.registration,
+    this.isReset = false,
+  });
 
   @override
   State<SetCodeScreen> createState() => _SetCodeScreenState();
@@ -21,6 +31,7 @@ class _SetCodeScreenState extends State<SetCodeScreen>
   int _step = 1; // 1 = enter, 2 = confirm
   bool _isError = false;
   bool _isSuccess = false;
+  bool _isSubmitting = false;
   int _mismatchCount = 0;
   String? _errorMessage;
   bool _showWeakWarning = false;
@@ -43,7 +54,7 @@ class _SetCodeScreenState extends State<SetCodeScreen>
   }
 
   void _onDigit(int digit) {
-    if (_code.length >= 6 || _isSuccess) return;
+    if (_code.length >= 6 || _isSuccess || _isSubmitting) return;
 
     setState(() {
       _code += digit.toString();
@@ -61,7 +72,7 @@ class _SetCodeScreenState extends State<SetCodeScreen>
   }
 
   void _onBackspace() {
-    if (_code.isEmpty) return;
+    if (_code.isEmpty || _isSubmitting) return;
     setState(() {
       _code = _code.substring(0, _code.length - 1);
       _isError = false;
@@ -91,7 +102,9 @@ class _SetCodeScreenState extends State<SetCodeScreen>
 
   Future<void> _handleStep2Complete() async {
     if (_code == _firstCode) {
-      // Success!
+      final completed = await _completeFlow();
+      if (!completed) return;
+
       setState(() => _isSuccess = true);
       HapticFeedback.mediumImpact();
 
@@ -121,6 +134,78 @@ class _SetCodeScreenState extends State<SetCodeScreen>
           _showStartOverDialog();
         }
       }
+    }
+  }
+
+  Future<bool> _completeFlow() async {
+    if (widget.registration != null) {
+      return _completeRegistration();
+    }
+    if (widget.isReset) {
+      return _completeReset();
+    }
+    return true;
+  }
+
+  Future<bool> _completeRegistration() async {
+    setState(() => _isSubmitting = true);
+    try {
+      await AuthService.registerAccount(
+        payload: widget.registration!,
+        pin: _firstCode,
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _errorMessage = _mapAuthError(e);
+      });
+      return false;
+    } catch (_) {
+      setState(() {
+        _errorMessage = 'Unable to create account. Please try again.';
+      });
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Future<bool> _completeReset() async {
+    setState(() => _isSubmitting = true);
+    try {
+      await AuthService.updatePin(pin: _firstCode);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _errorMessage = _mapAuthError(e);
+      });
+      return false;
+    } catch (_) {
+      setState(() {
+        _errorMessage = 'Unable to update your code. Please try again.';
+      });
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  String _mapAuthError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'email-already-in-use':
+        return 'Email already in use. Try another.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'weak-password':
+        return 'Your code is too weak. Try another.';
+      case 'requires-recent-login':
+        return 'Please sign in again to update your code.';
+      default:
+        return 'Something went wrong. Please try again.';
     }
   }
 
@@ -204,6 +289,12 @@ class _SetCodeScreenState extends State<SetCodeScreen>
         );
       },
       pageBuilder: (context, _, __) {
+        final successTitle =
+            widget.isReset ? 'Code updated' : 'You\'re all set!';
+        final successMessage = widget.isReset
+            ? 'Your code has been updated.\nYou can now sign in.'
+            : 'Your account is ready.\nWelcome to Campus Wallet!';
+
         return Center(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 40),
@@ -244,9 +335,9 @@ class _SetCodeScreenState extends State<SetCodeScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'You\'re all set!',
-                  style: TextStyle(
+                Text(
+                  successTitle,
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -255,10 +346,10 @@ class _SetCodeScreenState extends State<SetCodeScreen>
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Your account is ready.\nWelcome to CampusRide!',
+                Text(
+                  successMessage,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
@@ -443,6 +534,19 @@ class _SetCodeScreenState extends State<SetCodeScreen>
                 ),
               ),
 
+              if (_isSubmitting)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+
               // Weak code warning
               if (_showWeakWarning)
                 Container(
@@ -505,6 +609,7 @@ class _SetCodeScreenState extends State<SetCodeScreen>
                   onDigitTap: _onDigit,
                   onBackspace: _onBackspace,
                   onBiometric: null, // No biometric on set-code screen
+                  enabled: !_isSubmitting,
                 ),
               ),
 

@@ -31,26 +31,45 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
+    final openTickets = _kpis['openTickets'] as int? ?? 0;
+    final lowStockCount = _kpis['lowStockCount'] as int? ?? 0;
+    final weeklyRevenue = List<Map<String, dynamic>>.from(
+      _kpis['weeklyRevenue'] ?? const <Map<String, dynamic>>[],
+    );
+    final categoryBreakdown = List<Map<String, dynamic>>.from(
+      _kpis['categoryBreakdown'] ?? const <Map<String, dynamic>>[],
+    );
+    final recentActivity = _kpis['recentActivity'] as List<AuditLogEntry>? ?? [];
+    final weeklyTotal = (_kpis['weeklyTotal'] as num?)?.toDouble() ?? 0;
+    final weeklyChangePct = (_kpis['weeklyChangePct'] as num?)?.toDouble();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Alerts ────────────────────────────────────────────────
-          _buildAlert(
-            icon: Icons.error_outline_rounded,
-            color: const Color(0xFFE03E3E),
-            bg: const Color(0xFFFFF0F0),
-            message: '2 support tickets are open and unassigned',
-          ),
-          const SizedBox(height: 8),
-          _buildAlert(
-            icon: Icons.warning_amber_rounded,
-            color: const Color(0xFFE08C00),
-            bg: const Color(0xFFFFF8E6),
-            message: 'Convocation Pass stock is low — 23 remaining',
-          ),
-          const SizedBox(height: 24),
+          if (openTickets > 0) ...[
+            _buildAlert(
+              icon: Icons.error_outline_rounded,
+              color: const Color(0xFFE03E3E),
+              bg: const Color(0xFFFFF0F0),
+              message:
+                  '$openTickets support ticket${openTickets == 1 ? '' : 's'} open and unassigned',
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (lowStockCount > 0) ...[
+            _buildAlert(
+              icon: Icons.warning_amber_rounded,
+              color: const Color(0xFFE08C00),
+              bg: const Color(0xFFFFF8E6),
+              message:
+                  '$lowStockCount shop item${lowStockCount == 1 ? '' : 's'} low on stock',
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (openTickets > 0 || lowStockCount > 0) const SizedBox(height: 16),
 
           // ── KPI Cards ─────────────────────────────────────────────
           const AdminSectionHeader(title: 'Overview'),
@@ -72,30 +91,40 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '₦437,500',
-                  style: TextStyle(
+                Text(
+                  _formatCompactCurrency(weeklyTotal),
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const Text(
-                  'Total this week · +12.4% from last week',
-                  style: TextStyle(
+                Text(
+                  'Total this week · ${_formatWeeklyChange(weeklyChangePct)}',
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 24),
-                AdminBarChart(
-                  data: adminWeeklyRevenue,
-                  labelKey: 'day',
-                  valueKey: 'amount',
-                  height: 140,
-                ),
+                if (weeklyRevenue.isEmpty)
+                  const Text(
+                    'No revenue data yet.',
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  )
+                else
+                  AdminBarChart(
+                    data: weeklyRevenue,
+                    labelKey: 'day',
+                    valueKey: 'amount',
+                    height: 140,
+                  ),
               ],
             ),
           ),
@@ -104,13 +133,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           // ── Category Breakdown ────────────────────────────────────
           const AdminSectionHeader(title: 'Revenue by Category'),
           const SizedBox(height: 16),
-          _buildCategoryBreakdown(),
+          _buildCategoryBreakdown(categoryBreakdown),
           const SizedBox(height: 28),
 
           // ── Recent Activity ───────────────────────────────────────
           const AdminSectionHeader(title: 'Recent Activity'),
           const SizedBox(height: 16),
-          _buildRecentActivity(),
+          _buildRecentActivity(recentActivity),
         ],
       ),
     );
@@ -151,13 +180,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   Widget _buildKPIGrid(BuildContext context) {
+    final totalUsers = _kpis['totalUsers'] as int? ?? 0;
+    final activeCards = _kpis['activeCards'] as int? ?? 0;
+    final totalRevenue = (_kpis['totalRevenue'] as num?)?.toDouble() ?? 0;
+    final todayTrips = _kpis['todayTrips'] as int? ?? 0;
+    final openTickets = _kpis['openTickets'] as int? ?? 0;
+    final shopItems = _kpis['shopItems'] as int? ?? 0;
     final kpis = [
-      AdminKPI(title: 'Total Users', value: '${_kpis['totalUsers']}', change: '+12.4%', isPositive: true, icon: Icons.people_rounded, color: AppColors.primary, bgColor: AppColors.primarySurface),
-      AdminKPI(title: 'Active Cards', value: '${_kpis['activeCards']}', change: '+5.2%', isPositive: true, icon: Icons.credit_card_rounded, color: const Color(0xFF00B37E), bgColor: const Color(0xFFE6FAF4)),
-      AdminKPI(title: 'Total Revenue', value: '₦437.5K', change: '+18.1%', isPositive: true, icon: Icons.payments_rounded, color: const Color(0xFF9B5CF6), bgColor: const Color(0xFFF3EEFF)),
-      AdminKPI(title: "Today's Trips", value: '${_kpis['todayTrips']}', change: '-3.2%', isPositive: false, icon: Icons.directions_bus_rounded, color: const Color(0xFFE08C00), bgColor: const Color(0xFFFFF6E5)),
-      AdminKPI(title: 'Open Tickets', value: '${_kpis['openTickets']}', change: '+1', isPositive: false, icon: Icons.headset_mic_rounded, color: const Color(0xFFE03E3E), bgColor: const Color(0xFFFFF0F0)),
-      AdminKPI(title: 'Shop Items', value: '${_kpis['shopItems']}', change: '+2', isPositive: true, icon: Icons.storefront_rounded, color: const Color(0xFF00A3CC), bgColor: const Color(0xFFE5F8FC)),
+      AdminKPI(title: 'Total Users', value: '$totalUsers', change: '—', isPositive: true, icon: Icons.people_rounded, color: AppColors.primary, bgColor: AppColors.primarySurface),
+      AdminKPI(title: 'Active Cards', value: '$activeCards', change: '—', isPositive: true, icon: Icons.credit_card_rounded, color: const Color(0xFF00B37E), bgColor: const Color(0xFFE6FAF4)),
+      AdminKPI(title: 'Total Revenue', value: _formatCompactCurrency(totalRevenue), change: '—', isPositive: true, icon: Icons.payments_rounded, color: const Color(0xFF9B5CF6), bgColor: const Color(0xFFF3EEFF)),
+      AdminKPI(title: "Today's Trips", value: '$todayTrips', change: '—', isPositive: false, icon: Icons.directions_bus_rounded, color: const Color(0xFFE08C00), bgColor: const Color(0xFFFFF6E5)),
+      AdminKPI(title: 'Open Tickets', value: '$openTickets', change: '—', isPositive: false, icon: Icons.headset_mic_rounded, color: const Color(0xFFE03E3E), bgColor: const Color(0xFFFFF0F0)),
+      AdminKPI(title: 'Shop Items', value: '$shopItems', change: '—', isPositive: true, icon: Icons.storefront_rounded, color: const Color(0xFF00A3CC), bgColor: const Color(0xFFE5F8FC)),
     ];
 
     final width = MediaQuery.of(context).size.width;
@@ -178,11 +213,21 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _buildCategoryBreakdown() {
-    final total = adminCategoryBreakdown.fold<double>(
-        0, (sum, item) => sum + (item['amount'] as double));
+  Widget _buildCategoryBreakdown(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) {
+      return const Text(
+        'No category data yet.',
+        style: TextStyle(
+          fontFamily: 'Sora',
+          fontSize: 12,
+          color: AppColors.textSecondary,
+        ),
+      );
+    }
+    final total =
+        data.fold<double>(0, (sum, item) => sum + (item['amount'] as double));
     return Column(
-      children: adminCategoryBreakdown.map((item) {
+      children: data.map((item) {
         final pct = (item['amount'] as double) / total;
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -232,9 +277,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(List<AuditLogEntry> activity) {
+    if (activity.isEmpty) {
+      return const Text(
+        'No recent activity yet.',
+        style: TextStyle(
+          fontFamily: 'Sora',
+          fontSize: 12,
+          color: AppColors.textSecondary,
+        ),
+      );
+    }
     return Column(
-      children: adminAuditLog.take(4).map((entry) {
+      children: activity.take(4).map((entry) {
         final moduleColors = {
           'Shop': const Color(0xFF9B5CF6),
           'Users': AppColors.primary,
@@ -297,5 +352,21 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+
+  String _formatCompactCurrency(double value) {
+    if (value >= 1000000) {
+      return '₦${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (value >= 1000) {
+      return '₦${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return '₦${value.toStringAsFixed(0)}';
+  }
+
+  String _formatWeeklyChange(double? pct) {
+    if (pct == null) return 'no prior week data';
+    final sign = pct >= 0 ? '+' : '';
+    return '$sign${pct.toStringAsFixed(1)}% from last week';
   }
 }

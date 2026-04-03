@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 // ─── Enums ──────────────────────────────────────────────────────
@@ -43,6 +44,49 @@ class WalletTransaction {
 
   bool get isCredit => type == WalletTxType.credit;
   bool get hasReceipt => receiptStatus == ReceiptStatus.available;
+
+  factory WalletTransaction.fromFirestore(Map<String, dynamic> data, String id) {
+    final rawType = (data['type'] as String?)?.toLowerCase();
+    final rawCategory = (data['category'] as String?)?.toLowerCase();
+    final rawStatus = (data['receiptStatus'] as String?)?.toLowerCase();
+    final rawDate = data['date'];
+
+    DateTime date;
+    if (rawDate is Timestamp) {
+      date = rawDate.toDate();
+    } else if (rawDate is DateTime) {
+      date = rawDate;
+    } else {
+      date = DateTime.now();
+    }
+
+    return WalletTransaction(
+      id: id,
+      title: data['title'] as String? ?? 'Transaction',
+      subtitle: data['subtitle'] as String? ?? '',
+      amount: (data['amount'] as num?)?.toDouble() ?? 0,
+      type: _txTypeFromString(rawType),
+      category: _categoryFromString(rawCategory),
+      date: date,
+      receiptStatus: _receiptStatusFromString(rawStatus),
+      receiptId: data['receiptId'] as String?,
+      reference: data['reference'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'subtitle': subtitle,
+      'amount': amount,
+      'type': _txTypeToString(type),
+      'category': _categoryToString(category),
+      'date': Timestamp.fromDate(date),
+      'receiptStatus': _receiptStatusToString(receiptStatus),
+      if (receiptId != null) 'receiptId': receiptId,
+      if (reference != null) 'reference': reference,
+    };
+  }
 
   IconData get categoryIcon {
     switch (category) {
@@ -110,6 +154,83 @@ class WalletTransaction {
       case TxCategory.wifi:
         return 'WiFi';
     }
+  }
+}
+
+WalletTxType _txTypeFromString(String? value) {
+  switch (value) {
+    case 'credit':
+      return WalletTxType.credit;
+    case 'debit':
+      return WalletTxType.debit;
+    default:
+      return WalletTxType.debit;
+  }
+}
+
+String _txTypeToString(WalletTxType type) {
+  return type == WalletTxType.credit ? 'credit' : 'debit';
+}
+
+TxCategory _categoryFromString(String? value) {
+  switch (value) {
+    case 'transport':
+      return TxCategory.transport;
+    case 'topup':
+      return TxCategory.topup;
+    case 'purchase':
+      return TxCategory.purchase;
+    case 'subscription':
+      return TxCategory.subscription;
+    case 'refund':
+      return TxCategory.refund;
+    case 'wifi':
+      return TxCategory.wifi;
+    default:
+      return TxCategory.transport;
+  }
+}
+
+String _categoryToString(TxCategory category) {
+  switch (category) {
+    case TxCategory.transport:
+      return 'transport';
+    case TxCategory.topup:
+      return 'topup';
+    case TxCategory.purchase:
+      return 'purchase';
+    case TxCategory.subscription:
+      return 'subscription';
+    case TxCategory.refund:
+      return 'refund';
+    case TxCategory.wifi:
+      return 'wifi';
+  }
+}
+
+ReceiptStatus _receiptStatusFromString(String? value) {
+  switch (value) {
+    case 'available':
+      return ReceiptStatus.available;
+    case 'pending':
+      return ReceiptStatus.pending;
+    case 'notavailable':
+    case 'not_available':
+    case 'notAvailable':
+      return ReceiptStatus.notAvailable;
+    default:
+      return ReceiptStatus.notAvailable;
+  }
+}
+
+String _receiptStatusToString(ReceiptStatus status) {
+  switch (status) {
+    case ReceiptStatus.available:
+      return 'available';
+    case ReceiptStatus.pending:
+      return 'pending';
+    case ReceiptStatus.notAvailable:
+      return 'notAvailable';
   }
 }
 

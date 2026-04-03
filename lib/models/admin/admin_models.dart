@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -5,12 +6,225 @@ import 'package:flutter/material.dart';
 // ═══════════════════════════════════════════════════════════
 
 enum AdminUserTier { tier1, tier2, tier3 }
+
 enum AdminCardStatus { active, inactive, blocked }
+
 enum RouteStatus { active, inactive, underMaintenance }
+
 enum VehicleStatus { active, inactive, maintenance }
+
 enum TicketStatus { open, inProgress, resolved, closed }
+
 enum TicketPriority { low, medium, high, urgent }
+
 enum AdminRole { superAdmin, moderator, supportAgent, shopManager }
+
+AdminUserTier _tierFromString(String? value) {
+  switch (value) {
+    case 'tier2':
+      return AdminUserTier.tier2;
+    case 'tier3':
+      return AdminUserTier.tier3;
+    case 'tier1':
+    default:
+      return AdminUserTier.tier1;
+  }
+}
+
+String _tierToString(AdminUserTier tier) {
+  switch (tier) {
+    case AdminUserTier.tier1:
+      return 'tier1';
+    case AdminUserTier.tier2:
+      return 'tier2';
+    case AdminUserTier.tier3:
+      return 'tier3';
+  }
+}
+
+AdminCardStatus _cardStatusFromString(String? value) {
+  switch (value) {
+    case 'active':
+      return AdminCardStatus.active;
+    case 'blocked':
+      return AdminCardStatus.blocked;
+    case 'inactive':
+    default:
+      return AdminCardStatus.inactive;
+  }
+}
+
+String _cardStatusToString(AdminCardStatus status) {
+  switch (status) {
+    case AdminCardStatus.active:
+      return 'active';
+    case AdminCardStatus.inactive:
+      return 'inactive';
+    case AdminCardStatus.blocked:
+      return 'blocked';
+  }
+}
+
+RouteStatus _routeStatusFromString(String? value) {
+  switch (value) {
+    case 'inactive':
+      return RouteStatus.inactive;
+    case 'underMaintenance':
+      return RouteStatus.underMaintenance;
+    case 'active':
+    default:
+      return RouteStatus.active;
+  }
+}
+
+String _routeStatusToString(RouteStatus status) {
+  switch (status) {
+    case RouteStatus.active:
+      return 'active';
+    case RouteStatus.inactive:
+      return 'inactive';
+    case RouteStatus.underMaintenance:
+      return 'underMaintenance';
+  }
+}
+
+VehicleStatus _vehicleStatusFromString(String? value) {
+  switch (value) {
+    case 'inactive':
+      return VehicleStatus.inactive;
+    case 'maintenance':
+      return VehicleStatus.maintenance;
+    case 'active':
+    default:
+      return VehicleStatus.active;
+  }
+}
+
+String _vehicleStatusToString(VehicleStatus status) {
+  switch (status) {
+    case VehicleStatus.active:
+      return 'active';
+    case VehicleStatus.inactive:
+      return 'inactive';
+    case VehicleStatus.maintenance:
+      return 'maintenance';
+  }
+}
+
+TicketStatus _ticketStatusFromString(String? value) {
+  switch (value) {
+    case 'inProgress':
+      return TicketStatus.inProgress;
+    case 'resolved':
+      return TicketStatus.resolved;
+    case 'closed':
+      return TicketStatus.closed;
+    case 'open':
+    default:
+      return TicketStatus.open;
+  }
+}
+
+String _ticketStatusToString(TicketStatus status) {
+  switch (status) {
+    case TicketStatus.open:
+      return 'open';
+    case TicketStatus.inProgress:
+      return 'inProgress';
+    case TicketStatus.resolved:
+      return 'resolved';
+    case TicketStatus.closed:
+      return 'closed';
+  }
+}
+
+TicketPriority _ticketPriorityFromString(String? value) {
+  switch (value) {
+    case 'medium':
+      return TicketPriority.medium;
+    case 'high':
+      return TicketPriority.high;
+    case 'urgent':
+      return TicketPriority.urgent;
+    case 'low':
+    default:
+      return TicketPriority.low;
+  }
+}
+
+String _ticketPriorityToString(TicketPriority priority) {
+  switch (priority) {
+    case TicketPriority.low:
+      return 'low';
+    case TicketPriority.medium:
+      return 'medium';
+    case TicketPriority.high:
+      return 'high';
+    case TicketPriority.urgent:
+      return 'urgent';
+  }
+}
+
+AdminRole _roleFromString(String? value) {
+  switch (value) {
+    case 'moderator':
+      return AdminRole.moderator;
+    case 'supportAgent':
+      return AdminRole.supportAgent;
+    case 'shopManager':
+      return AdminRole.shopManager;
+    case 'superAdmin':
+    default:
+      return AdminRole.superAdmin;
+  }
+}
+
+AdminRole? _adminRoleFromString(String? value) {
+  switch (value) {
+    case 'superAdmin':
+      return AdminRole.superAdmin;
+    case 'moderator':
+      return AdminRole.moderator;
+    case 'supportAgent':
+      return AdminRole.supportAgent;
+    case 'shopManager':
+      return AdminRole.shopManager;
+    default:
+      return null;
+  }
+}
+
+String _roleToString(AdminRole role) {
+  switch (role) {
+    case AdminRole.superAdmin:
+      return 'superAdmin';
+    case AdminRole.moderator:
+      return 'moderator';
+    case AdminRole.supportAgent:
+      return 'supportAgent';
+    case AdminRole.shopManager:
+      return 'shopManager';
+  }
+}
+
+DateTime _dateFromFirestore(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  return DateTime.now();
+}
+
+Color _roleColor(AdminRole role) {
+  switch (role) {
+    case AdminRole.superAdmin:
+      return const Color(0xFF1A3FD8);
+    case AdminRole.moderator:
+      return const Color(0xFF9B5CF6);
+    case AdminRole.supportAgent:
+      return const Color(0xFF00A3CC);
+    case AdminRole.shopManager:
+      return const Color(0xFFE08C00);
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // ADMIN USER
@@ -29,6 +243,7 @@ class AdminUser {
   final AdminUserTier tier;
   final double walletBalance;
   final AdminCardStatus cardStatus;
+  final String role;
   final bool isVerified;
   final bool isEmailVerified;
   final DateTime joinDate;
@@ -48,12 +263,60 @@ class AdminUser {
     required this.tier,
     required this.walletBalance,
     required this.cardStatus,
+    required this.role,
     required this.isVerified,
     required this.isEmailVerified,
     required this.joinDate,
     required this.totalTransactions,
     required this.totalSpent,
   });
+
+  factory AdminUser.fromFirestore(String id, Map<String, dynamic> data) {
+    return AdminUser(
+      id: id,
+      fullName: data['fullName'] as String? ?? 'User',
+      nickname: data['nickname'] as String? ?? '',
+      studentId:
+          data['studentId'] as String? ?? data['matricNumber'] as String? ?? '',
+      email: data['email'] as String? ?? '',
+      phone: data['phone'] as String? ?? '',
+      faculty: data['faculty'] as String? ?? '',
+      department: data['department'] as String? ?? '',
+      level: data['level'] as String? ?? '',
+      tier: _tierFromString(data['tier'] as String?),
+      walletBalance: (data['walletBalance'] as num?)?.toDouble() ??
+          (data['balance'] as num?)?.toDouble() ??
+          0,
+      cardStatus: _cardStatusFromString(data['cardStatus'] as String?),
+      role: data['role'] as String? ?? 'user',
+      isVerified: data['isVerified'] as bool? ?? false,
+      isEmailVerified: data['isEmailVerified'] as bool? ?? false,
+      joinDate: _dateFromFirestore(data['createdAt']),
+      totalTransactions: data['totalTransactions'] as int? ?? 0,
+      totalSpent: (data['totalSpent'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'fullName': fullName,
+      'nickname': nickname,
+      'studentId': studentId,
+      'email': email,
+      'phone': phone,
+      'faculty': faculty,
+      'department': department,
+      'level': level,
+      'tier': _tierToString(tier),
+      'walletBalance': walletBalance,
+      'cardStatus': _cardStatusToString(cardStatus),
+      'role': role,
+      'isVerified': isVerified,
+      'isEmailVerified': isEmailVerified,
+      'totalTransactions': totalTransactions,
+      'totalSpent': totalSpent,
+    };
+  }
 
   String get tierLabel {
     switch (tier) {
@@ -98,6 +361,57 @@ class AdminUser {
         return const Color(0xFFE03E3E);
     }
   }
+
+  AdminRole? get adminRole => _adminRoleFromString(role);
+  bool get isAdmin => adminRole != null;
+
+  String get roleLabel {
+    switch (adminRole) {
+      case AdminRole.superAdmin:
+        return 'Super Admin';
+      case AdminRole.moderator:
+        return 'Moderator';
+      case AdminRole.supportAgent:
+        return 'Support Agent';
+      case AdminRole.shopManager:
+        return 'Shop Manager';
+      default:
+        return 'User';
+    }
+  }
+
+  Color get roleColor {
+    final roleValue = adminRole;
+    if (roleValue == null) return const Color(0xFF6B7A99);
+    return _roleColor(roleValue);
+  }
+
+  AdminUser copyWith({
+    AdminCardStatus? cardStatus,
+    AdminUserTier? tier,
+    String? role,
+  }) {
+    return AdminUser(
+      id: id,
+      fullName: fullName,
+      nickname: nickname,
+      studentId: studentId,
+      email: email,
+      phone: phone,
+      faculty: faculty,
+      department: department,
+      level: level,
+      tier: tier ?? this.tier,
+      walletBalance: walletBalance,
+      cardStatus: cardStatus ?? this.cardStatus,
+      role: role ?? this.role,
+      isVerified: isVerified,
+      isEmailVerified: isEmailVerified,
+      joinDate: joinDate,
+      totalTransactions: totalTransactions,
+      totalSpent: totalSpent,
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -130,6 +444,56 @@ class AdminRoute {
     required this.dailyPassengers,
     required this.operatingHours,
   });
+
+  factory AdminRoute.fromFirestore(String id, Map<String, dynamic> data) {
+    return AdminRoute(
+      id: id,
+      name: data['name'] as String? ?? 'Route',
+      from: data['from'] as String? ?? '',
+      to: data['to'] as String? ?? '',
+      fare: (data['fare'] as num?)?.toDouble() ?? 0,
+      status: _routeStatusFromString(data['status'] as String?),
+      vehicleCount: data['vehicleCount'] as int? ?? 0,
+      dailyRevenue: (data['dailyRevenue'] as num?)?.toDouble() ?? 0,
+      monthlyRevenue: (data['monthlyRevenue'] as num?)?.toDouble() ?? 0,
+      dailyPassengers: data['dailyPassengers'] as int? ?? 0,
+      operatingHours: data['operatingHours'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'from': from,
+      'to': to,
+      'fare': fare,
+      'status': _routeStatusToString(status),
+      'vehicleCount': vehicleCount,
+      'dailyRevenue': dailyRevenue,
+      'monthlyRevenue': monthlyRevenue,
+      'dailyPassengers': dailyPassengers,
+      'operatingHours': operatingHours,
+    };
+  }
+
+  AdminRoute copyWith({
+    double? fare,
+    RouteStatus? status,
+  }) {
+    return AdminRoute(
+      id: id,
+      name: name,
+      from: from,
+      to: to,
+      fare: fare ?? this.fare,
+      status: status ?? this.status,
+      vehicleCount: vehicleCount,
+      dailyRevenue: dailyRevenue,
+      monthlyRevenue: monthlyRevenue,
+      dailyPassengers: dailyPassengers,
+      operatingHours: operatingHours,
+    );
+  }
 
   String get statusLabel {
     switch (status) {
@@ -178,6 +542,31 @@ class AdminVehicle {
     required this.driverName,
     required this.driverPhone,
   });
+
+  factory AdminVehicle.fromFirestore(String id, Map<String, dynamic> data) {
+    return AdminVehicle(
+      id: id,
+      plateNumber: data['plateNumber'] as String? ?? '',
+      routeId: data['routeId'] as String? ?? '',
+      routeName: data['routeName'] as String? ?? '',
+      capacity: data['capacity'] as int? ?? 0,
+      status: _vehicleStatusFromString(data['status'] as String?),
+      driverName: data['driverName'] as String? ?? '',
+      driverPhone: data['driverPhone'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'plateNumber': plateNumber,
+      'routeId': routeId,
+      'routeName': routeName,
+      'capacity': capacity,
+      'status': _vehicleStatusToString(status),
+      'driverName': driverName,
+      'driverPhone': driverPhone,
+    };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -196,6 +585,24 @@ class SupportMessage {
     required this.message,
     required this.timestamp,
   });
+
+  factory SupportMessage.fromFirestore(Map<String, dynamic> data) {
+    return SupportMessage(
+      sender: data['sender'] as String? ?? 'user',
+      senderName: data['senderName'] as String? ?? '',
+      message: data['message'] as String? ?? '',
+      timestamp: _dateFromFirestore(data['timestamp']),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'sender': sender,
+      'senderName': senderName,
+      'message': message,
+      'timestamp': Timestamp.fromDate(timestamp),
+    };
+  }
 }
 
 class SupportTicket {
@@ -220,6 +627,41 @@ class SupportTicket {
     this.resolvedAt,
     required this.messages,
   });
+
+  factory SupportTicket.fromFirestore(String id, Map<String, dynamic> data) {
+    final rawMessages = data['messages'] as List<dynamic>? ?? [];
+    final messages = rawMessages
+        .whereType<Map<String, dynamic>>()
+        .map(SupportMessage.fromFirestore)
+        .toList();
+
+    return SupportTicket(
+      id: id,
+      userId: data['userId'] as String? ?? '',
+      userName: data['userName'] as String? ?? '',
+      subject: data['subject'] as String? ?? '',
+      status: _ticketStatusFromString(data['status'] as String?),
+      priority: _ticketPriorityFromString(data['priority'] as String?),
+      createdAt: _dateFromFirestore(data['createdAt']),
+      resolvedAt: data['resolvedAt'] == null
+          ? null
+          : _dateFromFirestore(data['resolvedAt']),
+      messages: messages,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'userId': userId,
+      'userName': userName,
+      'subject': subject,
+      'status': _ticketStatusToString(status),
+      'priority': _ticketPriorityToString(priority),
+      'createdAt': Timestamp.fromDate(createdAt),
+      if (resolvedAt != null) 'resolvedAt': Timestamp.fromDate(resolvedAt!),
+      'messages': messages.map((m) => m.toFirestore()).toList(),
+    };
+  }
 
   String get statusLabel {
     switch (status) {
@@ -296,6 +738,29 @@ class AuditLogEntry {
     required this.ipAddress,
     required this.module,
   });
+
+  factory AuditLogEntry.fromFirestore(String id, Map<String, dynamic> data) {
+    return AuditLogEntry(
+      id: id,
+      adminName: data['adminName'] as String? ?? '',
+      action: data['action'] as String? ?? '',
+      target: data['target'] as String? ?? '',
+      timestamp: _dateFromFirestore(data['timestamp']),
+      ipAddress: data['ipAddress'] as String? ?? '',
+      module: data['module'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'adminName': adminName,
+      'action': action,
+      'target': target,
+      'timestamp': Timestamp.fromDate(timestamp),
+      'ipAddress': ipAddress,
+      'module': module,
+    };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -318,6 +783,28 @@ class RolePermission {
     required this.userCount,
     required this.color,
   });
+
+  factory RolePermission.fromFirestore(String id, Map<String, dynamic> data) {
+    final role = _roleFromString(data['role'] as String?);
+    return RolePermission(
+      id: id,
+      roleName: data['roleName'] as String? ?? '',
+      role: role,
+      permissions: (data['permissions'] as Map<String, dynamic>? ?? {})
+          .map((key, value) => MapEntry(key, value as bool)),
+      userCount: data['userCount'] as int? ?? 0,
+      color: _roleColor(role),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'roleName': roleName,
+      'role': _roleToString(role),
+      'permissions': permissions,
+      'userCount': userCount,
+    };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -369,258 +856,284 @@ class AdminNotification {
     required this.total,
   });
 
+  factory AdminNotification.fromFirestore(
+      String id, Map<String, dynamic> data) {
+    return AdminNotification(
+      id: id,
+      title: data['title'] as String? ?? '',
+      message: data['message'] as String? ?? '',
+      type: data['type'] as String? ?? 'system',
+      audience: data['audience'] as String? ?? 'All Users',
+      sentAt: _dateFromFirestore(data['sentAt']),
+      delivered: data['delivered'] as int? ?? 0,
+      total: data['total'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'message': message,
+      'type': type,
+      'audience': audience,
+      'sentAt': Timestamp.fromDate(sentAt),
+      'delivered': delivered,
+      'total': total,
+    };
+  }
+
   double get deliveryRate => total == 0 ? 0 : delivered / total;
 }
 
-// ═══════════════════════════════════════════════════════════
-// ─── DUMMY DATA ─────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════
+// // ═══════════════════════════════════════════════════════════
+// // ─── DUMMY DATA ─────────────────────────────────────────────
+// // ═══════════════════════════════════════════════════════════
 
-final List<AdminUser> adminUsers = [
-  AdminUser(
-    id: 'u1', fullName: 'Oluwaferanmi Oresajo', nickname: 'Feranmi',
-    studentId: 'STU/2024/00142', email: 'feranmi@oauife.edu.ng',
-    phone: '+234 907 218 2889', faculty: 'Engineering',
-    department: 'Computer Engineering', level: '300L',
-    tier: AdminUserTier.tier1, walletBalance: 12350.00,
-    cardStatus: AdminCardStatus.active, isVerified: true,
-    isEmailVerified: true, joinDate: DateTime(2024, 9, 1),
-    totalTransactions: 47, totalSpent: 28500,
-  ),
-  AdminUser(
-    id: 'u2', fullName: 'Amara Okonkwo', nickname: 'Amara',
-    studentId: 'STU/2023/00089', email: 'amara@oauife.edu.ng',
-    phone: '+234 812 344 5566', faculty: 'Science',
-    department: 'Physics', level: '400L',
-    tier: AdminUserTier.tier2, walletBalance: 45000.00,
-    cardStatus: AdminCardStatus.active, isVerified: true,
-    isEmailVerified: true, joinDate: DateTime(2023, 9, 5),
-    totalTransactions: 112, totalSpent: 98200,
-  ),
-  AdminUser(
-    id: 'u3', fullName: 'Bola Adeleke', nickname: 'Bolaji',
-    studentId: 'STU/2025/00321', email: 'bola@oauife.edu.ng',
-    phone: '+234 703 112 9900', faculty: 'Arts',
-    department: 'English', level: '100L',
-    tier: AdminUserTier.tier1, walletBalance: 1200.00,
-    cardStatus: AdminCardStatus.inactive, isVerified: false,
-    isEmailVerified: false, joinDate: DateTime(2025, 1, 15),
-    totalTransactions: 8, totalSpent: 2400,
-  ),
-  AdminUser(
-    id: 'u4', fullName: 'Chukwuemeka Nwosu', nickname: 'Emeka',
-    studentId: 'STU/2022/00054', email: 'emeka@oauife.edu.ng',
-    phone: '+234 815 776 3421', faculty: 'Medicine',
-    department: 'Anatomy', level: '500L',
-    tier: AdminUserTier.tier2, walletBalance: 67500.00,
-    cardStatus: AdminCardStatus.active, isVerified: true,
-    isEmailVerified: true, joinDate: DateTime(2022, 9, 2),
-    totalTransactions: 234, totalSpent: 145000,
-  ),
-  AdminUser(
-    id: 'u5', fullName: 'Fatimah Lawal', nickname: 'Fati',
-    studentId: 'STU/2024/00278', email: 'fatimah@oauife.edu.ng',
-    phone: '+234 802 445 7731', faculty: 'Social Sciences',
-    department: 'Economics', level: '200L',
-    tier: AdminUserTier.tier1, walletBalance: 5800.00,
-    cardStatus: AdminCardStatus.blocked, isVerified: false,
-    isEmailVerified: true, joinDate: DateTime(2024, 2, 10),
-    totalTransactions: 23, totalSpent: 12500,
-  ),
-  AdminUser(
-    id: 'u6', fullName: 'Kelechi Eze', nickname: 'Kels',
-    studentId: 'STU/2023/00156', email: 'kelechi@oauife.edu.ng',
-    phone: '+234 906 118 2200', faculty: 'Engineering',
-    department: 'Mechanical Engineering', level: '300L',
-    tier: AdminUserTier.tier1, walletBalance: 3400.00,
-    cardStatus: AdminCardStatus.active, isVerified: true,
-    isEmailVerified: false, joinDate: DateTime(2023, 10, 1),
-    totalTransactions: 56, totalSpent: 31200,
-  ),
-  AdminUser(
-    id: 'u7', fullName: 'Ngozi Ifeanyi', nickname: 'Ngozi',
-    studentId: 'STU/2025/00402', email: 'ngozi@oauife.edu.ng',
-    phone: '+234 810 223 5566', faculty: 'Law',
-    department: 'International Law', level: '100L',
-    tier: AdminUserTier.tier1, walletBalance: 800.00,
-    cardStatus: AdminCardStatus.inactive, isVerified: false,
-    isEmailVerified: false, joinDate: DateTime(2025, 3, 5),
-    totalTransactions: 4, totalSpent: 1200,
-  ),
-  AdminUser(
-    id: 'u8', fullName: 'Oluwaseun Adeyemi', nickname: 'Seun',
-    studentId: 'STU/2021/00033', email: 'seun@oauife.edu.ng',
-    phone: '+234 901 334 8899', faculty: 'Agriculture',
-    department: 'Crop Science', level: '500L',
-    tier: AdminUserTier.tier3, walletBalance: 125000.00,
-    cardStatus: AdminCardStatus.active, isVerified: true,
-    isEmailVerified: true, joinDate: DateTime(2021, 9, 1),
-    totalTransactions: 389, totalSpent: 312000,
-  ),
-];
+// final List<AdminUser> adminUsers = [
+//   AdminUser(
+//     id: 'u1', fullName: 'Oluwaferanmi Oresajo', nickname: 'Feranmi',
+//     studentId: 'STU/2024/00142', email: 'feranmi@oauife.edu.ng',
+//     phone: '+234 907 218 2889', faculty: 'Engineering',
+//     department: 'Computer Engineering', level: '300L',
+//     tier: AdminUserTier.tier1, walletBalance: 12350.00,
+//     cardStatus: AdminCardStatus.active, isVerified: true,
+//     isEmailVerified: true, joinDate: DateTime(2024, 9, 1),
+//     totalTransactions: 47, totalSpent: 28500,
+//   ),
+//   AdminUser(
+//     id: 'u2', fullName: 'Amara Okonkwo', nickname: 'Amara',
+//     studentId: 'STU/2023/00089', email: 'amara@oauife.edu.ng',
+//     phone: '+234 812 344 5566', faculty: 'Science',
+//     department: 'Physics', level: '400L',
+//     tier: AdminUserTier.tier2, walletBalance: 45000.00,
+//     cardStatus: AdminCardStatus.active, isVerified: true,
+//     isEmailVerified: true, joinDate: DateTime(2023, 9, 5),
+//     totalTransactions: 112, totalSpent: 98200,
+//   ),
+//   AdminUser(
+//     id: 'u3', fullName: 'Bola Adeleke', nickname: 'Bolaji',
+//     studentId: 'STU/2025/00321', email: 'bola@oauife.edu.ng',
+//     phone: '+234 703 112 9900', faculty: 'Arts',
+//     department: 'English', level: '100L',
+//     tier: AdminUserTier.tier1, walletBalance: 1200.00,
+//     cardStatus: AdminCardStatus.inactive, isVerified: false,
+//     isEmailVerified: false, joinDate: DateTime(2025, 1, 15),
+//     totalTransactions: 8, totalSpent: 2400,
+//   ),
+//   AdminUser(
+//     id: 'u4', fullName: 'Chukwuemeka Nwosu', nickname: 'Emeka',
+//     studentId: 'STU/2022/00054', email: 'emeka@oauife.edu.ng',
+//     phone: '+234 815 776 3421', faculty: 'Medicine',
+//     department: 'Anatomy', level: '500L',
+//     tier: AdminUserTier.tier2, walletBalance: 67500.00,
+//     cardStatus: AdminCardStatus.active, isVerified: true,
+//     isEmailVerified: true, joinDate: DateTime(2022, 9, 2),
+//     totalTransactions: 234, totalSpent: 145000,
+//   ),
+//   AdminUser(
+//     id: 'u5', fullName: 'Fatimah Lawal', nickname: 'Fati',
+//     studentId: 'STU/2024/00278', email: 'fatimah@oauife.edu.ng',
+//     phone: '+234 802 445 7731', faculty: 'Social Sciences',
+//     department: 'Economics', level: '200L',
+//     tier: AdminUserTier.tier1, walletBalance: 5800.00,
+//     cardStatus: AdminCardStatus.blocked, isVerified: false,
+//     isEmailVerified: true, joinDate: DateTime(2024, 2, 10),
+//     totalTransactions: 23, totalSpent: 12500,
+//   ),
+//   AdminUser(
+//     id: 'u6', fullName: 'Kelechi Eze', nickname: 'Kels',
+//     studentId: 'STU/2023/00156', email: 'kelechi@oauife.edu.ng',
+//     phone: '+234 906 118 2200', faculty: 'Engineering',
+//     department: 'Mechanical Engineering', level: '300L',
+//     tier: AdminUserTier.tier1, walletBalance: 3400.00,
+//     cardStatus: AdminCardStatus.active, isVerified: true,
+//     isEmailVerified: false, joinDate: DateTime(2023, 10, 1),
+//     totalTransactions: 56, totalSpent: 31200,
+//   ),
+//   AdminUser(
+//     id: 'u7', fullName: 'Ngozi Ifeanyi', nickname: 'Ngozi',
+//     studentId: 'STU/2025/00402', email: 'ngozi@oauife.edu.ng',
+//     phone: '+234 810 223 5566', faculty: 'Law',
+//     department: 'International Law', level: '100L',
+//     tier: AdminUserTier.tier1, walletBalance: 800.00,
+//     cardStatus: AdminCardStatus.inactive, isVerified: false,
+//     isEmailVerified: false, joinDate: DateTime(2025, 3, 5),
+//     totalTransactions: 4, totalSpent: 1200,
+//   ),
+//   AdminUser(
+//     id: 'u8', fullName: 'Oluwaseun Adeyemi', nickname: 'Seun',
+//     studentId: 'STU/2021/00033', email: 'seun@oauife.edu.ng',
+//     phone: '+234 901 334 8899', faculty: 'Agriculture',
+//     department: 'Crop Science', level: '500L',
+//     tier: AdminUserTier.tier3, walletBalance: 125000.00,
+//     cardStatus: AdminCardStatus.active, isVerified: true,
+//     isEmailVerified: true, joinDate: DateTime(2021, 9, 1),
+//     totalTransactions: 389, totalSpent: 312000,
+//   ),
+// ];
 
-final List<AdminRoute> adminRoutes = [
-  AdminRoute(
-    id: 'r1', name: 'Route 12',
-    from: 'Main Gate', to: 'Faculty of Engineering',
-    fare: 150, status: RouteStatus.active,
-    vehicleCount: 4, dailyRevenue: 18000,
-    monthlyRevenue: 396000, dailyPassengers: 120,
-    operatingHours: '7:00 AM – 8:00 PM',
-  ),
-  AdminRoute(
-    id: 'r2', name: 'Route 7',
-    from: 'Moremi Hall', to: 'Student Union Building',
-    fare: 100, status: RouteStatus.active,
-    vehicleCount: 3, dailyRevenue: 12000,
-    monthlyRevenue: 264000, dailyPassengers: 120,
-    operatingHours: '6:30 AM – 9:00 PM',
-  ),
-  AdminRoute(
-    id: 'r3', name: 'Route 5',
-    from: 'Off-campus (Ede Rd)', to: 'Main Gate',
-    fare: 200, status: RouteStatus.active,
-    vehicleCount: 6, dailyRevenue: 28800,
-    monthlyRevenue: 633600, dailyPassengers: 144,
-    operatingHours: '5:30 AM – 10:00 PM',
-  ),
-  AdminRoute(
-    id: 'r4', name: 'Route 3',
-    from: 'Library', to: 'Sports Complex',
-    fare: 50, status: RouteStatus.inactive,
-    vehicleCount: 0, dailyRevenue: 0,
-    monthlyRevenue: 0, dailyPassengers: 0,
-    operatingHours: 'Inactive',
-  ),
-  AdminRoute(
-    id: 'r5', name: 'Route 9',
-    from: 'Medical Complex', to: 'Main Gate',
-    fare: 150, status: RouteStatus.underMaintenance,
-    vehicleCount: 2, dailyRevenue: 4500,
-    monthlyRevenue: 99000, dailyPassengers: 30,
-    operatingHours: '8:00 AM – 5:00 PM',
-  ),
-];
+// final List<AdminRoute> adminRoutes = [
+//   AdminRoute(
+//     id: 'r1', name: 'Route 12',
+//     from: 'Main Gate', to: 'Faculty of Engineering',
+//     fare: 150, status: RouteStatus.active,
+//     vehicleCount: 4, dailyRevenue: 18000,
+//     monthlyRevenue: 396000, dailyPassengers: 120,
+//     operatingHours: '7:00 AM – 8:00 PM',
+//   ),
+//   AdminRoute(
+//     id: 'r2', name: 'Route 7',
+//     from: 'Moremi Hall', to: 'Student Union Building',
+//     fare: 100, status: RouteStatus.active,
+//     vehicleCount: 3, dailyRevenue: 12000,
+//     monthlyRevenue: 264000, dailyPassengers: 120,
+//     operatingHours: '6:30 AM – 9:00 PM',
+//   ),
+//   AdminRoute(
+//     id: 'r3', name: 'Route 5',
+//     from: 'Off-campus (Ede Rd)', to: 'Main Gate',
+//     fare: 200, status: RouteStatus.active,
+//     vehicleCount: 6, dailyRevenue: 28800,
+//     monthlyRevenue: 633600, dailyPassengers: 144,
+//     operatingHours: '5:30 AM – 10:00 PM',
+//   ),
+//   AdminRoute(
+//     id: 'r4', name: 'Route 3',
+//     from: 'Library', to: 'Sports Complex',
+//     fare: 50, status: RouteStatus.inactive,
+//     vehicleCount: 0, dailyRevenue: 0,
+//     monthlyRevenue: 0, dailyPassengers: 0,
+//     operatingHours: 'Inactive',
+//   ),
+//   AdminRoute(
+//     id: 'r5', name: 'Route 9',
+//     from: 'Medical Complex', to: 'Main Gate',
+//     fare: 150, status: RouteStatus.underMaintenance,
+//     vehicleCount: 2, dailyRevenue: 4500,
+//     monthlyRevenue: 99000, dailyPassengers: 30,
+//     operatingHours: '8:00 AM – 5:00 PM',
+//   ),
+// ];
 
-final List<AdminVehicle> adminVehicles = [
-  AdminVehicle(id: 'v1', plateNumber: 'OY 452 MSF', routeId: 'r1', routeName: 'Route 12', capacity: 18, status: VehicleStatus.active, driverName: 'Saheed Adeyemi', driverPhone: '08012345678'),
-  AdminVehicle(id: 'v2', plateNumber: 'OY 118 KFG', routeId: 'r1', routeName: 'Route 12', capacity: 18, status: VehicleStatus.active, driverName: 'Ademola Osinuga', driverPhone: '08023456789'),
-  AdminVehicle(id: 'v3', plateNumber: 'OY 774 ABN', routeId: 'r2', routeName: 'Route 7', capacity: 14, status: VehicleStatus.active, driverName: 'Kunle Bello', driverPhone: '08034567890'),
-  AdminVehicle(id: 'v4', plateNumber: 'OY 339 XYZ', routeId: 'r3', routeName: 'Route 5', capacity: 25, status: VehicleStatus.maintenance, driverName: 'John Okeke', driverPhone: '08045678901'),
-  AdminVehicle(id: 'v5', plateNumber: 'OY 221 LMN', routeId: 'r5', routeName: 'Route 9', capacity: 18, status: VehicleStatus.inactive, driverName: 'Taiwo Ajayi', driverPhone: '08056789012'),
-];
+// final List<AdminVehicle> adminVehicles = [
+//   AdminVehicle(id: 'v1', plateNumber: 'OY 452 MSF', routeId: 'r1', routeName: 'Route 12', capacity: 18, status: VehicleStatus.active, driverName: 'Saheed Adeyemi', driverPhone: '08012345678'),
+//   AdminVehicle(id: 'v2', plateNumber: 'OY 118 KFG', routeId: 'r1', routeName: 'Route 12', capacity: 18, status: VehicleStatus.active, driverName: 'Ademola Osinuga', driverPhone: '08023456789'),
+//   AdminVehicle(id: 'v3', plateNumber: 'OY 774 ABN', routeId: 'r2', routeName: 'Route 7', capacity: 14, status: VehicleStatus.active, driverName: 'Kunle Bello', driverPhone: '08034567890'),
+//   AdminVehicle(id: 'v4', plateNumber: 'OY 339 XYZ', routeId: 'r3', routeName: 'Route 5', capacity: 25, status: VehicleStatus.maintenance, driverName: 'John Okeke', driverPhone: '08045678901'),
+//   AdminVehicle(id: 'v5', plateNumber: 'OY 221 LMN', routeId: 'r5', routeName: 'Route 9', capacity: 18, status: VehicleStatus.inactive, driverName: 'Taiwo Ajayi', driverPhone: '08056789012'),
+// ];
 
-final List<SupportTicket> adminTickets = [
-  SupportTicket(
-    id: 'TKT-001', userId: 'u3', userName: 'Bola Adeleke',
-    subject: 'Card not activating after payment',
-    status: TicketStatus.open, priority: TicketPriority.high,
-    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    messages: [
-      SupportMessage(sender: 'user', senderName: 'Bola Adeleke', message: 'I paid for card activation but it still shows inactive. Please help!', timestamp: DateTime.now().subtract(const Duration(hours: 2))),
-    ],
-  ),
-  SupportTicket(
-    id: 'TKT-002', userId: 'u5', userName: 'Fatimah Lawal',
-    subject: 'Card was blocked without notice',
-    status: TicketStatus.inProgress, priority: TicketPriority.urgent,
-    createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-    messages: [
-      SupportMessage(sender: 'user', senderName: 'Fatimah Lawal', message: 'My card was blocked and I cannot make any trips. This is urgent!', timestamp: DateTime.now().subtract(const Duration(hours: 5))),
-      SupportMessage(sender: 'admin', senderName: 'Admin', message: 'We are reviewing your account. This was flagged due to unusual activity. We will unblock it once verified.', timestamp: DateTime.now().subtract(const Duration(hours: 4))),
-    ],
-  ),
-  SupportTicket(
-    id: 'TKT-003', userId: 'u1', userName: 'Feranmi Oresajo',
-    subject: 'WiFi ticket credentials not working',
-    status: TicketStatus.resolved, priority: TicketPriority.medium,
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    resolvedAt: DateTime.now().subtract(const Duration(hours: 20)),
-    messages: [
-      SupportMessage(sender: 'user', senderName: 'Feranmi Oresajo', message: 'The WiFi credentials from my ticket are not connecting.', timestamp: DateTime.now().subtract(const Duration(days: 1))),
-      SupportMessage(sender: 'admin', senderName: 'Admin', message: 'New credentials have been issued to your ticket. Please check the app.', timestamp: DateTime.now().subtract(const Duration(hours: 20))),
-    ],
-  ),
-  SupportTicket(
-    id: 'TKT-004', userId: 'u2', userName: 'Amara Okonkwo',
-    subject: 'Refund not received for cancelled route',
-    status: TicketStatus.open, priority: TicketPriority.medium,
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    messages: [
-      SupportMessage(sender: 'user', senderName: 'Amara Okonkwo', message: 'Route 3 was cancelled 3 days ago and I have not received my refund of ₦150.', timestamp: DateTime.now().subtract(const Duration(days: 2))),
-    ],
-  ),
-  SupportTicket(
-    id: 'TKT-005', userId: 'u6', userName: 'Kelechi Eze',
-    subject: 'App crashes on checkout',
-    status: TicketStatus.closed, priority: TicketPriority.low,
-    createdAt: DateTime.now().subtract(const Duration(days: 5)),
-    resolvedAt: DateTime.now().subtract(const Duration(days: 4)),
-    messages: [
-      SupportMessage(sender: 'user', senderName: 'Kelechi Eze', message: 'App crashes when I try to checkout from the shop.', timestamp: DateTime.now().subtract(const Duration(days: 5))),
-      SupportMessage(sender: 'admin', senderName: 'Admin', message: 'This has been fixed in the latest update. Please update the app.', timestamp: DateTime.now().subtract(const Duration(days: 4))),
-    ],
-  ),
-];
+// final List<SupportTicket> adminTickets = [
+//   SupportTicket(
+//     id: 'TKT-001', userId: 'u3', userName: 'Bola Adeleke',
+//     subject: 'Card not activating after payment',
+//     status: TicketStatus.open, priority: TicketPriority.high,
+//     createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+//     messages: [
+//       SupportMessage(sender: 'user', senderName: 'Bola Adeleke', message: 'I paid for card activation but it still shows inactive. Please help!', timestamp: DateTime.now().subtract(const Duration(hours: 2))),
+//     ],
+//   ),
+//   SupportTicket(
+//     id: 'TKT-002', userId: 'u5', userName: 'Fatimah Lawal',
+//     subject: 'Card was blocked without notice',
+//     status: TicketStatus.inProgress, priority: TicketPriority.urgent,
+//     createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+//     messages: [
+//       SupportMessage(sender: 'user', senderName: 'Fatimah Lawal', message: 'My card was blocked and I cannot make any trips. This is urgent!', timestamp: DateTime.now().subtract(const Duration(hours: 5))),
+//       SupportMessage(sender: 'admin', senderName: 'Admin', message: 'We are reviewing your account. This was flagged due to unusual activity. We will unblock it once verified.', timestamp: DateTime.now().subtract(const Duration(hours: 4))),
+//     ],
+//   ),
+//   SupportTicket(
+//     id: 'TKT-003', userId: 'u1', userName: 'Feranmi Oresajo',
+//     subject: 'WiFi ticket credentials not working',
+//     status: TicketStatus.resolved, priority: TicketPriority.medium,
+//     createdAt: DateTime.now().subtract(const Duration(days: 1)),
+//     resolvedAt: DateTime.now().subtract(const Duration(hours: 20)),
+//     messages: [
+//       SupportMessage(sender: 'user', senderName: 'Feranmi Oresajo', message: 'The WiFi credentials from my ticket are not connecting.', timestamp: DateTime.now().subtract(const Duration(days: 1))),
+//       SupportMessage(sender: 'admin', senderName: 'Admin', message: 'New credentials have been issued to your ticket. Please check the app.', timestamp: DateTime.now().subtract(const Duration(hours: 20))),
+//     ],
+//   ),
+//   SupportTicket(
+//     id: 'TKT-004', userId: 'u2', userName: 'Amara Okonkwo',
+//     subject: 'Refund not received for cancelled route',
+//     status: TicketStatus.open, priority: TicketPriority.medium,
+//     createdAt: DateTime.now().subtract(const Duration(days: 2)),
+//     messages: [
+//       SupportMessage(sender: 'user', senderName: 'Amara Okonkwo', message: 'Route 3 was cancelled 3 days ago and I have not received my refund of ₦150.', timestamp: DateTime.now().subtract(const Duration(days: 2))),
+//     ],
+//   ),
+//   SupportTicket(
+//     id: 'TKT-005', userId: 'u6', userName: 'Kelechi Eze',
+//     subject: 'App crashes on checkout',
+//     status: TicketStatus.closed, priority: TicketPriority.low,
+//     createdAt: DateTime.now().subtract(const Duration(days: 5)),
+//     resolvedAt: DateTime.now().subtract(const Duration(days: 4)),
+//     messages: [
+//       SupportMessage(sender: 'user', senderName: 'Kelechi Eze', message: 'App crashes when I try to checkout from the shop.', timestamp: DateTime.now().subtract(const Duration(days: 5))),
+//       SupportMessage(sender: 'admin', senderName: 'Admin', message: 'This has been fixed in the latest update. Please update the app.', timestamp: DateTime.now().subtract(const Duration(days: 4))),
+//     ],
+//   ),
+// ];
 
-final List<AuditLogEntry> adminAuditLog = [
-  AuditLogEntry(id: 'a1', adminName: 'Super Admin', action: 'Updated shop item price', target: 'Inteco WiFi (₦100 → ₦120)', timestamp: DateTime.now().subtract(const Duration(minutes: 10)), ipAddress: '192.168.1.1', module: 'Shop'),
-  AuditLogEntry(id: 'a2', adminName: 'Shop Manager', action: 'Added new shop item', target: 'Convocation Pass 2026', timestamp: DateTime.now().subtract(const Duration(hours: 1)), ipAddress: '192.168.1.4', module: 'Shop'),
-  AuditLogEntry(id: 'a3', adminName: 'Support Agent', action: 'Resolved ticket', target: 'TKT-003', timestamp: DateTime.now().subtract(const Duration(hours: 2)), ipAddress: '10.0.0.14', module: 'Support'),
-  AuditLogEntry(id: 'a4', adminName: 'Super Admin', action: 'Blocked user account', target: 'Fatimah Lawal (STU/2024/00278)', timestamp: DateTime.now().subtract(const Duration(hours: 3)), ipAddress: '192.168.1.1', module: 'Users'),
-  AuditLogEntry(id: 'a5', adminName: 'Super Admin', action: 'Changed route fare', target: 'Route 5 (₦150 → ₦200)', timestamp: DateTime.now().subtract(const Duration(hours: 6)), ipAddress: '192.168.1.1', module: 'Transport'),
-  AuditLogEntry(id: 'a6', adminName: 'Moderator', action: 'Sent push notification', target: 'Weekend Promo (All users)', timestamp: DateTime.now().subtract(const Duration(days: 1)), ipAddress: '10.0.0.22', module: 'Notifications'),
-  AuditLogEntry(id: 'a7', adminName: 'Super Admin', action: 'Issued refund', target: '₦150 → Amara Okonkwo', timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)), ipAddress: '192.168.1.1', module: 'Wallet'),
-  AuditLogEntry(id: 'a8', adminName: 'Shop Manager', action: 'Updated stock count', target: 'Convocation Pass (50 → 23)', timestamp: DateTime.now().subtract(const Duration(days: 2)), ipAddress: '192.168.1.4', module: 'Shop'),
-  AuditLogEntry(id: 'a9', adminName: 'Super Admin', action: 'Activated vehicle route', target: 'OY 452 MSF → Route 12', timestamp: DateTime.now().subtract(const Duration(days: 3)), ipAddress: '192.168.1.1', module: 'Transport'),
-  AuditLogEntry(id: 'a10', adminName: 'Support Agent', action: 'Upgraded user tier', target: 'Seun Adeyemi (Tier 2 → Tier 3)', timestamp: DateTime.now().subtract(const Duration(days: 4)), ipAddress: '10.0.0.14', module: 'Users'),
-];
+// final List<AuditLogEntry> adminAuditLog = [
+//   AuditLogEntry(id: 'a1', adminName: 'Super Admin', action: 'Updated shop item price', target: 'Inteco WiFi (₦100 → ₦120)', timestamp: DateTime.now().subtract(const Duration(minutes: 10)), ipAddress: '192.168.1.1', module: 'Shop'),
+//   AuditLogEntry(id: 'a2', adminName: 'Shop Manager', action: 'Added new shop item', target: 'Convocation Pass 2026', timestamp: DateTime.now().subtract(const Duration(hours: 1)), ipAddress: '192.168.1.4', module: 'Shop'),
+//   AuditLogEntry(id: 'a3', adminName: 'Support Agent', action: 'Resolved ticket', target: 'TKT-003', timestamp: DateTime.now().subtract(const Duration(hours: 2)), ipAddress: '10.0.0.14', module: 'Support'),
+//   AuditLogEntry(id: 'a4', adminName: 'Super Admin', action: 'Blocked user account', target: 'Fatimah Lawal (STU/2024/00278)', timestamp: DateTime.now().subtract(const Duration(hours: 3)), ipAddress: '192.168.1.1', module: 'Users'),
+//   AuditLogEntry(id: 'a5', adminName: 'Super Admin', action: 'Changed route fare', target: 'Route 5 (₦150 → ₦200)', timestamp: DateTime.now().subtract(const Duration(hours: 6)), ipAddress: '192.168.1.1', module: 'Transport'),
+//   AuditLogEntry(id: 'a6', adminName: 'Moderator', action: 'Sent push notification', target: 'Weekend Promo (All users)', timestamp: DateTime.now().subtract(const Duration(days: 1)), ipAddress: '10.0.0.22', module: 'Notifications'),
+//   AuditLogEntry(id: 'a7', adminName: 'Super Admin', action: 'Issued refund', target: '₦150 → Amara Okonkwo', timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)), ipAddress: '192.168.1.1', module: 'Wallet'),
+//   AuditLogEntry(id: 'a8', adminName: 'Shop Manager', action: 'Updated stock count', target: 'Convocation Pass (50 → 23)', timestamp: DateTime.now().subtract(const Duration(days: 2)), ipAddress: '192.168.1.4', module: 'Shop'),
+//   AuditLogEntry(id: 'a9', adminName: 'Super Admin', action: 'Activated vehicle route', target: 'OY 452 MSF → Route 12', timestamp: DateTime.now().subtract(const Duration(days: 3)), ipAddress: '192.168.1.1', module: 'Transport'),
+//   AuditLogEntry(id: 'a10', adminName: 'Support Agent', action: 'Upgraded user tier', target: 'Seun Adeyemi (Tier 2 → Tier 3)', timestamp: DateTime.now().subtract(const Duration(days: 4)), ipAddress: '10.0.0.14', module: 'Users'),
+// ];
 
-final List<RolePermission> adminRoles = [
-  RolePermission(
-    id: 'role1', roleName: 'Super Admin', role: AdminRole.superAdmin,
-    userCount: 2, color: const Color(0xFF1A3FD8),
-    permissions: {
-      'Dashboard': true, 'Users': true, 'Wallet': true,
-      'Transport': true, 'Shop': true, 'Transactions': true,
-      'Notifications': true, 'Support': true, 'Roles': true, 'Audit Log': true,
-    },
-  ),
-  RolePermission(
-    id: 'role2', roleName: 'Moderator', role: AdminRole.moderator,
-    userCount: 3, color: const Color(0xFF9B5CF6),
-    permissions: {
-      'Dashboard': true, 'Users': true, 'Wallet': false,
-      'Transport': true, 'Shop': false, 'Transactions': true,
-      'Notifications': true, 'Support': true, 'Roles': false, 'Audit Log': false,
-    },
-  ),
-  RolePermission(
-    id: 'role3', roleName: 'Support Agent', role: AdminRole.supportAgent,
-    userCount: 5, color: const Color(0xFF00A3CC),
-    permissions: {
-      'Dashboard': true, 'Users': true, 'Wallet': false,
-      'Transport': false, 'Shop': false, 'Transactions': false,
-      'Notifications': false, 'Support': true, 'Roles': false, 'Audit Log': false,
-    },
-  ),
-  RolePermission(
-    id: 'role4', roleName: 'Shop Manager', role: AdminRole.shopManager,
-    userCount: 2, color: const Color(0xFFE08C00),
-    permissions: {
-      'Dashboard': true, 'Users': false, 'Wallet': false,
-      'Transport': false, 'Shop': true, 'Transactions': true,
-      'Notifications': false, 'Support': false, 'Roles': false, 'Audit Log': false,
-    },
-  ),
-];
+// final List<RolePermission> adminRoles = [
+//   RolePermission(
+//     id: 'role1', roleName: 'Super Admin', role: AdminRole.superAdmin,
+//     userCount: 2, color: const Color(0xFF1A3FD8),
+//     permissions: {
+//       'Dashboard': true, 'Users': true, 'Wallet': true,
+//       'Transport': true, 'Shop': true, 'Transactions': true,
+//       'Notifications': true, 'Support': true, 'Roles': true, 'Audit Log': true,
+//     },
+//   ),
+//   RolePermission(
+//     id: 'role2', roleName: 'Moderator', role: AdminRole.moderator,
+//     userCount: 3, color: const Color(0xFF9B5CF6),
+//     permissions: {
+//       'Dashboard': true, 'Users': true, 'Wallet': false,
+//       'Transport': true, 'Shop': false, 'Transactions': true,
+//       'Notifications': true, 'Support': true, 'Roles': false, 'Audit Log': false,
+//     },
+//   ),
+//   RolePermission(
+//     id: 'role3', roleName: 'Support Agent', role: AdminRole.supportAgent,
+//     userCount: 5, color: const Color(0xFF00A3CC),
+//     permissions: {
+//       'Dashboard': true, 'Users': true, 'Wallet': false,
+//       'Transport': false, 'Shop': false, 'Transactions': false,
+//       'Notifications': false, 'Support': true, 'Roles': false, 'Audit Log': false,
+//     },
+//   ),
+//   RolePermission(
+//     id: 'role4', roleName: 'Shop Manager', role: AdminRole.shopManager,
+//     userCount: 2, color: const Color(0xFFE08C00),
+//     permissions: {
+//       'Dashboard': true, 'Users': false, 'Wallet': false,
+//       'Transport': false, 'Shop': true, 'Transactions': true,
+//       'Notifications': false, 'Support': false, 'Roles': false, 'Audit Log': false,
+//     },
+//   ),
+// ];
 
-final List<AdminNotification> adminSentNotifications = [
-  AdminNotification(id: 'n1', title: 'Weekend Promo!', message: 'Enjoy 20% off all intra-campus trips this weekend. Apply promo code WKND20.', type: 'promo', audience: 'All Users', sentAt: DateTime.now().subtract(const Duration(days: 1)), delivered: 1845, total: 1960),
-  AdminNotification(id: 'n2', title: 'System Maintenance', message: 'CampusRide systems will be down for maintenance tonight from 2 AM to 4 AM.', type: 'system', audience: 'All Users', sentAt: DateTime.now().subtract(const Duration(hours: 2)), delivered: 1900, total: 1960),
-  AdminNotification(id: 'n3', title: 'Tier 2 Upgrade Offer', message: 'Upgrade to Tier 2 now and enjoy higher spending limits and priority support.', type: 'promo', audience: 'Tier 1', sentAt: DateTime.now().subtract(const Duration(days: 3)), delivered: 1200, total: 1400),
-  AdminNotification(id: 'n4', title: 'Route 3 Suspended', message: 'We regret to inform you that Route 3 has been temporarily suspended due to vehicle maintenance.', type: 'system', audience: 'All Users', sentAt: DateTime.now().subtract(const Duration(days: 5)), delivered: 1950, total: 1960),
-];
+// final List<AdminNotification> adminSentNotifications = [
+//   AdminNotification(id: 'n1', title: 'Weekend Promo!', message: 'Enjoy 20% off all intra-campus trips this weekend. Apply promo code WKND20.', type: 'promo', audience: 'All Users', sentAt: DateTime.now().subtract(const Duration(days: 1)), delivered: 1845, total: 1960),
+//   AdminNotification(id: 'n2', title: 'System Maintenance', message: 'Campus Wallet systems will be down for maintenance tonight from 2 AM to 4 AM.', type: 'system', audience: 'All Users', sentAt: DateTime.now().subtract(const Duration(hours: 2)), delivered: 1900, total: 1960),
+//   AdminNotification(id: 'n3', title: 'Tier 2 Upgrade Offer', message: 'Upgrade to Tier 2 now and enjoy higher spending limits and priority support.', type: 'promo', audience: 'Tier 1', sentAt: DateTime.now().subtract(const Duration(days: 3)), delivered: 1200, total: 1400),
+//   AdminNotification(id: 'n4', title: 'Route 3 Suspended', message: 'We regret to inform you that Route 3 has been temporarily suspended due to vehicle maintenance.', type: 'system', audience: 'All Users', sentAt: DateTime.now().subtract(const Duration(days: 5)), delivered: 1950, total: 1960),
+// ];
 
 // Weekly revenue for chart (7 days)
 final List<Map<String, dynamic>> adminWeeklyRevenue = [

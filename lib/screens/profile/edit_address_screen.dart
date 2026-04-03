@@ -1,16 +1,32 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/user/user_profile_service.dart';
 
 class EditAddressScreen extends StatefulWidget {
-  const EditAddressScreen({super.key});
+  final String currentStreet;
+  final String currentCityState;
+
+  const EditAddressScreen({
+    super.key,
+    required this.currentStreet,
+    required this.currentCityState,
+  });
 
   @override
   State<EditAddressScreen> createState() => _EditAddressScreenState();
 }
 
 class _EditAddressScreenState extends State<EditAddressScreen> {
-  final TextEditingController _streetController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
+  late final TextEditingController _streetController;
+  late final TextEditingController _cityController;
+
+  @override
+  void initState() {
+    super.initState();
+    _streetController = TextEditingController(text: widget.currentStreet);
+    _cityController = TextEditingController(text: widget.currentCityState);
+  }
 
   @override
   void dispose() {
@@ -19,8 +35,30 @@ class _EditAddressScreenState extends State<EditAddressScreen> {
     super.dispose();
   }
 
-  void _saveAddress() {
-    // Front-end only: just pop back or show success message
+  Future<void> _saveAddress() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Please sign in to update your address.',
+            style: TextStyle(fontFamily: 'Sora', fontSize: 13),
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        ),
+      );
+      return;
+    }
+
+    await UserProfileService.updateAddress(
+      uid: user.uid,
+      street: _streetController.text.trim(),
+      cityState: _cityController.text.trim(),
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text(

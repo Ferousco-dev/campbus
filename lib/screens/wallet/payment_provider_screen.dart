@@ -1,7 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_utils.dart';
+import '../../services/payments/paystack_service.dart';
+import '../../services/wallet/wallet_service.dart';
 import '../shared/success_screen.dart';
 
 class PaymentProviderScreen extends StatefulWidget {
@@ -18,27 +21,87 @@ class _PaymentProviderScreenState extends State<PaymentProviderScreen> {
   bool _isProcessing = false;
 
   void _onPay() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showError('Please sign in to continue.');
+      return;
+    }
+    final email = user.email ?? '';
+    if (email.isEmpty) {
+      _showError('Add an email to your account to continue.');
+      return;
+    }
+
     setState(() => _isProcessing = true);
-    
-    // Simulate network delay for funding
-    await Future.delayed(const Duration(seconds: 2));
-    
+
+    final result = await PaystackService.charge(
+      email: email,
+      amount: widget.amount,
+    );
+
+    if (!mounted) return;
+    if (!result.success) {
+      setState(() => _isProcessing = false);
+      _showError(result.message);
+      return;
+    }
+
+    try {
+      await WalletService.recordTopUp(
+        userId: user.uid,
+        amount: widget.amount,
+        reference: result.reference,
+        methodLabel: _methodLabel(_selectedMethod),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      _showError('Unable to update wallet. Please try again.');
+      return;
+    }
+
     if (!mounted) return;
     setState(() => _isProcessing = false);
+
+    final description = result.isDemo
+        ? 'Demo mode: ${AppUtils.formatCurrency(widget.amount)} credited to your wallet.'
+        : 'You have successfully added ${AppUtils.formatCurrency(widget.amount)} to your wallet balance. You can now use it for rides and purchases.';
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => SuccessScreen(
           title: 'Top-Up Successful',
-          description: 'You have successfully added ${AppUtils.formatCurrency(widget.amount)} to your wallet balance. You can now use it for rides and purchases.',
+          description: description,
           primaryButtonLabel: 'Back to Wallet',
           onPrimaryPressed: () => Navigator.pop(context),
           secondaryButtonLabel: 'View Receipt',
-          onSecondaryPressed: () => Navigator.pop(context), 
+          onSecondaryPressed: () => Navigator.pop(context),
         ),
       ),
     );
+  }
+
+  String _methodLabel(int method) {
+    switch (method) {
+      case 1:
+        return 'Bank Transfer';
+      case 2:
+        return 'USSD';
+      case 0:
+      default:
+        return 'Card';
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message, style: const TextStyle(fontFamily: 'Sora')),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   @override

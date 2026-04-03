@@ -13,6 +13,7 @@ class AdminRolesPage extends StatefulWidget {
 
 class _AdminRolesPageState extends State<AdminRolesPage> {
   List<RolePermission> _roles = [];
+  List<AdminUser> _users = [];
   bool _loading = true;
   RolePermission? _selectedRole;
 
@@ -20,8 +21,19 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
   void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
-    final roles = await AdminService.fetchRoles();
-    if (mounted) setState(() { _roles = roles; _loading = false; });
+    final results = await Future.wait([
+      AdminService.fetchRoles(),
+      AdminService.fetchUsers(),
+    ]);
+    final roles = results[0] as List<RolePermission>;
+    final users = results[1] as List<AdminUser>;
+    if (mounted) {
+      setState(() {
+        _roles = roles;
+        _users = users;
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -65,7 +77,9 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
   }
 
   Widget _buildRoleCard(RolePermission role) {
-    final modules = role.permissions.keys.toList();
+    final modules = role.permissions.keys.toList()..sort();
+    final userCount =
+        _users.where((u) => u.role == role.role.name).length;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -95,7 +109,7 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
                   const SizedBox(width: 12),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(role.roleName, style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    Text('${role.userCount} admin users', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
+                    Text('$userCount admin users', style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
                   ]),
                   const Spacer(),
                   const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
@@ -118,12 +132,7 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
                   children: modules.map((module) {
                     final hasAccess = role.permissions[module] ?? false;
                     return GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        setState(() {
-                          role.permissions[module] = !hasAccess;
-                        });
-                      },
+                      onTap: () => _togglePermission(role, module, hasAccess),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
@@ -150,9 +159,8 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
 
   Widget _buildRoleDetail() {
     final role = _selectedRole!;
-    // Use the dummy user logic conceptually to gather 'users in this role'
-    // Since AdminUser doesn't natively have a role inside dummy data, we will mock the count.
-    final usersInRole = adminUsers.take(role.userCount).toList();
+    final usersInRole =
+        _users.where((u) => u.role == role.role.name).toList();
 
     return SingleChildScrollView(
       key: ValueKey('detail-${role.id}'),
@@ -182,7 +190,7 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
             ],
           ),
           const SizedBox(height: 32),
-          Text('Users assigned as ${role.roleName} (${role.userCount})', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          Text('Users assigned as ${role.roleName} (${usersInRole.length})', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
           const SizedBox(height: 16),
           if (usersInRole.isEmpty)
             const Text('No users found.', style: TextStyle(fontFamily: 'Sora', fontSize: 14, color: AppColors.textMuted))
@@ -228,6 +236,22 @@ class _AdminRolesPageState extends State<AdminRolesPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _togglePermission(
+    RolePermission role,
+    String module,
+    bool hasAccess,
+  ) async {
+    HapticFeedback.lightImpact();
+    setState(() {
+      role.permissions[module] = !hasAccess;
+    });
+    await AdminService.updateRolePermission(
+      role.id,
+      module,
+      !hasAccess,
     );
   }
 }

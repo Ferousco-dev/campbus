@@ -1,172 +1,408 @@
-// ─── Admin Service — API Hook Stubs ──────────────────────────────────────────
-// Replace these stubs with real HTTP/Supabase calls when backend is ready.
-// Each method returns a Future with simulated network delay.
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/admin/admin_models.dart';
 import '../../models/shop_item_model.dart';
 import '../../models/wallet_models.dart';
 
 class AdminService {
-  static const _delay = Duration(milliseconds: 400);
+  AdminService._();
+
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // ── Users ──────────────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/users
   static Future<List<AdminUser>> fetchUsers() async {
-    await Future.delayed(_delay);
-    return adminUsers;
+    final snapshot = await _firestore.collection('users').get();
+    return snapshot.docs
+        .map((doc) => AdminUser.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: GET /api/admin/users/:id
   static Future<AdminUser?> fetchUserById(String id) async {
-    await Future.delayed(_delay);
-    return adminUsers.where((u) => u.id == id).firstOrNull;
+    final doc = await _firestore.collection('users').doc(id).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return AdminUser.fromFirestore(doc.id, doc.data()!);
   }
 
-  // TODO: PATCH /api/admin/users/:id/card-status
-  static Future<bool> updateUserCardStatus(String userId, AdminCardStatus status) async {
-    await Future.delayed(_delay);
-    return true; // Simulate success
+  static Future<bool> updateUserCardStatus(
+      String userId, AdminCardStatus status) async {
+    await _firestore.collection('users').doc(userId).set({
+      'cardStatus': status.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return true;
   }
 
-  // TODO: PATCH /api/admin/users/:id/tier
   static Future<bool> updateUserTier(String userId, AdminUserTier tier) async {
-    await Future.delayed(_delay);
+    await _firestore.collection('users').doc(userId).set({
+      'tier': tier.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     return true;
   }
 
   // ── Transactions ───────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/transactions?page=&filter=&category=
   static Future<List<WalletTransaction>> fetchAllTransactions() async {
-    await Future.delayed(_delay);
-    return walletTransactions;
+    final snapshot = await _firestore
+        .collectionGroup('transactions')
+        .orderBy('date', descending: true)
+        .limit(200)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => WalletTransaction.fromFirestore(doc.data(), doc.id))
+        .toList();
   }
 
-  // TODO: POST /api/admin/transactions/refund
   static Future<bool> issueRefund(String transactionId, double amount) async {
-    await Future.delayed(_delay);
+    await _firestore.collection('admin_audit').add({
+      'adminName': 'System',
+      'action': 'Issued refund',
+      'target': 'TX: $transactionId · ₦${amount.toStringAsFixed(0)}',
+      'timestamp': FieldValue.serverTimestamp(),
+      'ipAddress': '0.0.0.0',
+      'module': 'Wallet',
+    });
     return true;
   }
 
   // ── Transport ──────────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/routes
   static Future<List<AdminRoute>> fetchRoutes() async {
-    await Future.delayed(_delay);
-    return adminRoutes;
+    final snapshot = await _firestore.collection('routes').get();
+    return snapshot.docs
+        .map((doc) => AdminRoute.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: PATCH /api/admin/routes/:id
-  static Future<bool> updateRoute(String routeId, {double? fare, RouteStatus? status}) async {
-    await Future.delayed(_delay);
+  static Future<bool> updateRoute(
+    String routeId, {
+    double? fare,
+    RouteStatus? status,
+  }) async {
+    final data = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (fare != null) data['fare'] = fare;
+    if (status != null) data['status'] = status.name;
+
+    await _firestore.collection('routes').doc(routeId).set(
+          data,
+          SetOptions(merge: true),
+        );
     return true;
   }
 
-  // TODO: GET /api/admin/vehicles
   static Future<List<AdminVehicle>> fetchVehicles() async {
-    await Future.delayed(_delay);
-    return adminVehicles;
+    final snapshot = await _firestore.collection('vehicles').get();
+    return snapshot.docs
+        .map((doc) => AdminVehicle.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: PATCH /api/admin/vehicles/:id/status
-  static Future<bool> updateVehicleStatus(String vehicleId, VehicleStatus status) async {
-    await Future.delayed(_delay);
+  static Future<bool> updateVehicleStatus(
+      String vehicleId, VehicleStatus status) async {
+    await _firestore.collection('vehicles').doc(vehicleId).set({
+      'status': status.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     return true;
   }
 
   // ── Shop ──────────────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/shop/items
   static Future<List<ShopItem>> fetchShopItems() async {
-    await Future.delayed(_delay);
-    return sampleShopItems;
+    final snapshot = await _firestore.collection('shop_items').get();
+    return snapshot.docs
+        .map((doc) => ShopItem.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: POST /api/admin/shop/items
-  static Future<bool> addShopItem(ShopItem item) async {
-    await Future.delayed(_delay);
-    return true;
+  static Future<String> addShopItem(ShopItem item) async {
+    final ref = _firestore.collection('shop_items').doc();
+    await ref.set({
+      ...item.toFirestore(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return ref.id;
   }
 
-  // TODO: PATCH /api/admin/shop/items/:id
   static Future<bool> updateShopItem(ShopItem item) async {
-    await Future.delayed(_delay);
+    await _firestore
+        .collection('shop_items')
+        .doc(item.id)
+        .set({
+          ...item.toFirestore(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
     return true;
   }
 
-  // TODO: DELETE /api/admin/shop/items/:id
   static Future<bool> deleteShopItem(String itemId) async {
-    await Future.delayed(_delay);
+    await _firestore.collection('shop_items').doc(itemId).delete();
     return true;
   }
 
   // ── Support ───────────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/support/tickets
   static Future<List<SupportTicket>> fetchTickets() async {
-    await Future.delayed(_delay);
-    return adminTickets;
+    final snapshot = await _firestore.collection('support_tickets').get();
+    return snapshot.docs
+        .map((doc) => SupportTicket.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: POST /api/admin/support/tickets/:id/reply
   static Future<bool> replyToTicket(String ticketId, String message) async {
-    await Future.delayed(_delay);
+    final reply = SupportMessage(
+      sender: 'admin',
+      senderName: 'Admin',
+      message: message,
+      timestamp: DateTime.now(),
+    ).toFirestore();
+
+    await _firestore.collection('support_tickets').doc(ticketId).set({
+      'messages': FieldValue.arrayUnion([reply]),
+      'status': TicketStatus.inProgress.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     return true;
   }
 
-  // TODO: PATCH /api/admin/support/tickets/:id/resolve
   static Future<bool> resolveTicket(String ticketId) async {
-    await Future.delayed(_delay);
+    await _firestore.collection('support_tickets').doc(ticketId).set({
+      'status': TicketStatus.resolved.name,
+      'resolvedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     return true;
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/notifications
   static Future<List<AdminNotification>> fetchSentNotifications() async {
-    await Future.delayed(_delay);
-    return adminSentNotifications;
+    final snapshot = await _firestore
+        .collection('admin_notifications')
+        .orderBy('sentAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => AdminNotification.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: POST /api/admin/notifications/send
   static Future<bool> sendNotification({
     required String title,
     required String message,
     required String type,
     required String audience,
   }) async {
-    await Future.delayed(_delay);
+    await _firestore.collection('admin_notifications').add({
+      'title': title,
+      'message': message,
+      'type': type,
+      'audience': audience,
+      'sentAt': FieldValue.serverTimestamp(),
+      'delivered': 0,
+      'total': 0,
+    });
     return true;
   }
 
   // ── Roles ─────────────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/roles
   static Future<List<RolePermission>> fetchRoles() async {
-    await Future.delayed(_delay);
-    return adminRoles;
+    final snapshot = await _firestore.collection('admin_roles').get();
+    return snapshot.docs
+        .map((doc) => RolePermission.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
-  // TODO: PATCH /api/admin/roles/:id
-  static Future<bool> updateRolePermission(String roleId, String module, bool value) async {
-    await Future.delayed(_delay);
+  static Future<bool> updateRolePermission(
+      String roleId, String module, bool value) async {
+    await _firestore.collection('admin_roles').doc(roleId).set({
+      'permissions.$module': value,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return true;
+  }
+
+  static Future<bool> updateUserRole(String userId, String role) async {
+    await _firestore.collection('users').doc(userId).set({
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     return true;
   }
 
   // ── Audit Log ─────────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/audit-log
-  static Future<List<AuditLogEntry>> fetchAuditLog() async {
-    await Future.delayed(_delay);
-    return adminAuditLog;
+  static Future<List<AuditLogEntry>> fetchAuditLog({int limit = 50}) async {
+    final snapshot = await _firestore
+        .collection('admin_audit')
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs
+        .map((doc) => AuditLogEntry.fromFirestore(doc.id, doc.data()))
+        .toList();
   }
 
   // ── Dashboard KPIs ────────────────────────────────────────────────────────
-  // TODO: GET /api/admin/dashboard/kpis
   static Future<Map<String, dynamic>> fetchDashboardKPIs() async {
-    await Future.delayed(_delay);
+    final usersSnap = await _firestore.collection('users').get();
+    final totalUsers = usersSnap.size;
+    final activeCards = usersSnap.docs
+        .where((doc) => doc.data()['cardStatus'] == 'active')
+        .length;
+
+    final ticketsSnap = await _firestore.collection('support_tickets').get();
+    final openTickets = ticketsSnap.docs.where((doc) {
+      final status = doc.data()['status'] as String?;
+      return status == 'open' || status == 'inProgress';
+    }).length;
+
+    final shopSnap = await _firestore.collection('shop_items').get();
+    final shopItems = shopSnap.size;
+    final lowStockCount = shopSnap.docs.where((doc) {
+      final stock = doc.data()['stockCount'];
+      if (stock is num) return stock.toInt() <= 10;
+      return false;
+    }).length;
+
+    final txSnap = await _firestore
+        .collectionGroup('transactions')
+        .orderBy('date', descending: true)
+        .limit(500)
+        .get();
+    final txs = txSnap.docs
+        .map((doc) => WalletTransaction.fromFirestore(doc.data(), doc.id))
+        .toList();
+
+    final totalRevenue = txs
+        .where((t) => t.isCredit)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final today = DateTime.now();
+    final todayRevenue = txs
+        .where((t) => t.isCredit && _isSameDay(t.date, today))
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final todayTrips = txs
+        .where((t) => t.category == TxCategory.transport)
+        .where((t) => _isSameDay(t.date, today))
+        .length;
+
+    final weeklyRevenue = _buildWeeklyRevenue(txs);
+    final weeklyTotal = weeklyRevenue.fold<double>(
+      0,
+      (sum, item) => sum + (item['amount'] as double),
+    );
+    final currentWeekStart = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 6));
+    final previousWeekStart = currentWeekStart.subtract(const Duration(days: 7));
+    final previousWeekEnd = currentWeekStart.subtract(const Duration(milliseconds: 1));
+    final previousWeekTotal =
+        _sumCreditsInRange(txs, previousWeekStart, previousWeekEnd);
+    final weeklyChangePct = previousWeekTotal > 0
+        ? ((weeklyTotal - previousWeekTotal) / previousWeekTotal) * 100
+        : null;
+    final categoryBreakdown = _buildCategoryBreakdown(txs);
+    final recentActivity = await fetchAuditLog(limit: 4);
+
     return {
-      'totalUsers': 1960,
-      'activeCards': 1284,
-      'totalRevenue': 437500.0,
-      'todayRevenue': 58400.0,
-      'todayTrips': 847,
-      'openTickets': 2,
-      'shopItems': sampleShopItems.length,
-      'monthlyGrowth': 12.4,
+      'totalUsers': totalUsers,
+      'activeCards': activeCards,
+      'totalRevenue': totalRevenue,
+      'todayRevenue': todayRevenue,
+      'todayTrips': todayTrips,
+      'openTickets': openTickets,
+      'shopItems': shopItems,
+      'lowStockCount': lowStockCount,
+      'weeklyRevenue': weeklyRevenue,
+      'weeklyTotal': weeklyTotal,
+      'weeklyChangePct': weeklyChangePct,
+      'categoryBreakdown': categoryBreakdown,
+      'recentActivity': recentActivity,
     };
+  }
+
+  static List<Map<String, dynamic>> _buildWeeklyRevenue(
+      List<WalletTransaction> txs) {
+    final now = DateTime.now();
+    final days = List.generate(7, (index) => now.subtract(Duration(days: 6 - index)));
+    final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    final data = <Map<String, dynamic>>[];
+    for (int i = 0; i < days.length; i++) {
+      final day = days[i];
+      final sum = txs
+          .where((t) => t.isCredit && _isSameDay(t.date, day))
+          .fold(0.0, (s, t) => s + t.amount);
+      data.add({'day': labels[day.weekday - 1], 'amount': sum});
+    }
+    return data;
+  }
+
+  static List<Map<String, dynamic>> _buildCategoryBreakdown(
+      List<WalletTransaction> txs) {
+    final Map<TxCategory, double> totals = {
+      for (final cat in TxCategory.values) cat: 0,
+    };
+
+    for (final tx in txs.where((t) => t.isCredit)) {
+      totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
+    }
+
+    return totals.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => {
+              'label': _categoryLabel(entry.key),
+              'amount': entry.value,
+              'color': _categoryColor(entry.key),
+            })
+        .toList();
+  }
+
+  static String _categoryLabel(TxCategory category) {
+    switch (category) {
+      case TxCategory.transport:
+        return 'Transport';
+      case TxCategory.topup:
+        return 'Top-up';
+      case TxCategory.purchase:
+        return 'Purchase';
+      case TxCategory.subscription:
+        return 'Subscription';
+      case TxCategory.refund:
+        return 'Refund';
+      case TxCategory.wifi:
+        return 'WiFi';
+    }
+  }
+
+  static Color _categoryColor(TxCategory category) {
+    switch (category) {
+      case TxCategory.transport:
+        return const Color(0xFF1A3FD8);
+      case TxCategory.topup:
+        return const Color(0xFF00B37E);
+      case TxCategory.purchase:
+        return const Color(0xFF9B5CF6);
+      case TxCategory.subscription:
+        return const Color(0xFFE08C00);
+      case TxCategory.refund:
+        return const Color(0xFF00A3CC);
+      case TxCategory.wifi:
+        return const Color(0xFF5C7CFA);
+    }
+  }
+
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  static double _sumCreditsInRange(
+    List<WalletTransaction> txs,
+    DateTime start,
+    DateTime end,
+  ) {
+    return txs
+        .where((t) => t.isCredit)
+        .where((t) => !t.date.isBefore(start) && !t.date.isAfter(end))
+        .fold(0.0, (sum, t) => sum + t.amount);
   }
 }

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum TransactionType { credit, debit }
 
 class TransactionModel {
@@ -20,6 +22,43 @@ class TransactionModel {
   });
 
   bool get isCredit => type == TransactionType.credit;
+
+  factory TransactionModel.fromFirestore(Map<String, dynamic> data, String id) {
+    final rawType = (data['type'] as String?)?.toLowerCase();
+    final type = rawType == 'credit'
+        ? TransactionType.credit
+        : TransactionType.debit;
+    final rawDate = data['date'];
+    DateTime date;
+    if (rawDate is Timestamp) {
+      date = rawDate.toDate();
+    } else if (rawDate is DateTime) {
+      date = rawDate;
+    } else {
+      date = DateTime.now();
+    }
+
+    return TransactionModel(
+      id: id,
+      title: data['title'] as String? ?? 'Transaction',
+      subtitle: data['subtitle'] as String? ?? '',
+      amount: (data['amount'] as num?)?.toDouble() ?? 0,
+      type: type,
+      date: date,
+      category: data['category'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'subtitle': subtitle,
+      'amount': amount,
+      'type': type == TransactionType.credit ? 'credit' : 'debit',
+      'date': Timestamp.fromDate(date),
+      if (category != null) 'category': category,
+    };
+  }
 }
 
 // Sample data

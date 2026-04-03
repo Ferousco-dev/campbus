@@ -101,7 +101,7 @@ class StudentCardFront extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'CampusRide',
+                          'Campus Wallet',
                           style: TextStyle(
                             fontFamily: 'Sora',
                             color: Colors.white,

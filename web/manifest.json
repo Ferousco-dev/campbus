@@ -1,6 +1,6 @@
 {
-    "name": "transport_app",
-    "short_name": "transport_app",
+    "name": "Campus Wallet",
+    "short_name": "Campus Wallet",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

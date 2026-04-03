@@ -46,6 +46,195 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     });
   }
 
+  void _updateUser(AdminUser updated) {
+    setState(() {
+      _users =
+          _users.map((u) => u.id == updated.id ? updated : u).toList();
+      _selected = updated;
+    });
+    _applyFilter();
+  }
+
+  void _showSnack(String message, {Color? color}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message, style: const TextStyle(fontFamily: 'Sora')),
+      backgroundColor: color ?? AppColors.textPrimary,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
+  Future<void> _toggleCardStatus(AdminUser user) async {
+    final nextStatus = user.cardStatus == AdminCardStatus.blocked
+        ? AdminCardStatus.active
+        : AdminCardStatus.blocked;
+    await AdminService.updateUserCardStatus(user.id, nextStatus);
+    _updateUser(user.copyWith(cardStatus: nextStatus));
+    _showSnack(
+      nextStatus == AdminCardStatus.blocked
+          ? 'Card blocked ✓'
+          : 'Card unblocked ✓',
+      color: nextStatus == AdminCardStatus.blocked
+          ? const Color(0xFFE03E3E)
+          : AppColors.success,
+    );
+  }
+
+  Future<void> _updateTier(AdminUser user, AdminUserTier tier) async {
+    await AdminService.updateUserTier(user.id, tier);
+    _updateUser(user.copyWith(tier: tier));
+    _showSnack('Tier updated to ${_tierLabel(tier)} ✓',
+        color: AppColors.success);
+  }
+
+  Future<void> _assignRole(AdminUser user, String roleValue, String label) async {
+    await AdminService.updateUserRole(user.id, roleValue);
+    _updateUser(user.copyWith(role: roleValue));
+    _showSnack(
+      roleValue == 'user'
+          ? 'Admin role removed ✓'
+          : '$label assigned ✓',
+      color: AppColors.success,
+    );
+  }
+
+  void _showTierSheet(AdminUser user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape:
+          const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Upgrade Tier',
+                style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text('Select a tier for ${user.fullName}.',
+                style: const TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 13,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 24),
+            ...AdminUserTier.values.map((tier) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _tierOption(
+                    ctx,
+                    tier,
+                    user.tier == tier,
+                    () async {
+                      Navigator.pop(ctx);
+                      await _updateTier(user, tier);
+                    },
+                  ),
+                )),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: TextButton.styleFrom(
+                    backgroundColor: AppColors.background,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14))),
+                child: const Text('Cancel',
+                    style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRefundSheet(AdminUser user) {
+    final amountCtrl = TextEditingController();
+    final referenceCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape:
+          const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Issue Refund',
+                style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text('Create a refund entry for ${user.fullName}.',
+                style: const TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 13,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 20),
+            _field('Amount (₦)', amountCtrl,
+                inputType: TextInputType.number),
+            const SizedBox(height: 14),
+            _field('Transaction Reference (optional)', referenceCtrl),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final amount =
+                      double.tryParse(amountCtrl.text.trim()) ?? 0;
+                  if (amount <= 0) {
+                    _showSnack('Enter a valid amount',
+                        color: const Color(0xFFE03E3E));
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  await AdminService.issueRefund(
+                    referenceCtrl.text.trim().isEmpty
+                        ? 'manual'
+                        : referenceCtrl.text.trim(),
+                    amount,
+                  );
+                  _showSnack('Refund queued ✓', color: AppColors.success);
+                },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    elevation: 0),
+                child: const Text('Submit Refund',
+                    style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -195,6 +384,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         children: [
                           AdminStatusChip(label: user.tierLabel, color: user.tierColor),
                           AdminStatusChip(label: user.cardStatusLabel, color: user.cardStatusColor),
+                          if (user.isAdmin)
+                            AdminStatusChip(label: user.roleLabel, color: user.roleColor),
                           if (user.isVerified)
                             const AdminStatusChip(label: 'Verified', color: Color(0xFF00B37E)),
                         ],
@@ -230,13 +421,14 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                   label: user.cardStatus == AdminCardStatus.blocked ? 'Unblock Card' : 'Block Card',
                   icon: user.cardStatus == AdminCardStatus.blocked ? Icons.lock_open_rounded : Icons.block_rounded,
                   color: user.cardStatus == AdminCardStatus.blocked ? const Color(0xFF00B37E) : const Color(0xFFE03E3E),
+                  onTap: () => _toggleCardStatus(user),
                 ),
                 const SizedBox(height: 8),
-                _actionRow(label: 'Upgrade Tier', icon: Icons.upgrade_rounded, color: AppColors.primary),
+                _actionRow(label: 'Upgrade Tier', icon: Icons.upgrade_rounded, color: AppColors.primary, onTap: () => _showTierSheet(user)),
                 const SizedBox(height: 8),
                 _actionRow(label: 'Assign Admin Role', icon: Icons.admin_panel_settings_rounded, color: const Color(0xFF9B5CF6), onTap: () => _showRoleSheet(user)),
                 const SizedBox(height: 8),
-                _actionRow(label: 'Issue Refund', icon: Icons.replay_rounded, color: const Color(0xFF00A3CC)),
+                _actionRow(label: 'Issue Refund', icon: Icons.replay_rounded, color: const Color(0xFF00A3CC), onTap: () => _showRefundSheet(user)),
               ],
             ),
           ),
@@ -282,6 +474,40 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         ],
       ),
     );
+  }
+
+  Widget _field(String label, TextEditingController ctrl,
+      {TextInputType inputType = TextInputType.text}) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label,
+          style: const TextStyle(
+              fontFamily: 'Sora',
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500)),
+      const SizedBox(height: 6),
+      TextField(
+        controller: ctrl,
+        keyboardType: inputType,
+        style: const TextStyle(
+            fontFamily: 'Sora', fontSize: 14, color: AppColors.textPrimary),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: AppColors.background,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary)),
+        ),
+      ),
+    ]);
   }
 
   Widget _actionRow({required String label, required IconData icon, required Color color, VoidCallback? onTap}) {
@@ -347,13 +573,60 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             const SizedBox(height: 8),
             Text('Select a role to grant to ${user.fullName}.', style: const TextStyle(fontFamily: 'Sora', fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 24),
-            _roleOption(ctx, 'Super Admin', 'Full system access', Icons.shield_rounded, const Color(0xFF1A3FD8)),
+            _roleOption(
+              ctx,
+              roleValue: 'superAdmin',
+              label: 'Super Admin',
+              desc: 'Full system access',
+              icon: Icons.shield_rounded,
+              color: const Color(0xFF1A3FD8),
+              currentRole: user.role,
+              onTap: () => _assignRole(user, 'superAdmin', 'Super Admin'),
+            ),
             const SizedBox(height: 12),
-            _roleOption(ctx, 'Moderator', 'Can manage users, content & transactions', Icons.gavel_rounded, const Color(0xFF9B5CF6)),
+            _roleOption(
+              ctx,
+              roleValue: 'moderator',
+              label: 'Moderator',
+              desc: 'Can manage users, content & transactions',
+              icon: Icons.gavel_rounded,
+              color: const Color(0xFF9B5CF6),
+              currentRole: user.role,
+              onTap: () => _assignRole(user, 'moderator', 'Moderator'),
+            ),
             const SizedBox(height: 12),
-            _roleOption(ctx, 'Support Agent', 'Can resolve support tickets', Icons.support_agent_rounded, const Color(0xFF00A3CC)),
+            _roleOption(
+              ctx,
+              roleValue: 'supportAgent',
+              label: 'Support Agent',
+              desc: 'Can resolve support tickets',
+              icon: Icons.support_agent_rounded,
+              color: const Color(0xFF00A3CC),
+              currentRole: user.role,
+              onTap: () => _assignRole(user, 'supportAgent', 'Support Agent'),
+            ),
             const SizedBox(height: 12),
-            _roleOption(ctx, 'Shop Manager', 'Can manage store inventory and orders', Icons.storefront_rounded, const Color(0xFFE08C00)),
+            _roleOption(
+              ctx,
+              roleValue: 'shopManager',
+              label: 'Shop Manager',
+              desc: 'Can manage store inventory and orders',
+              icon: Icons.storefront_rounded,
+              color: const Color(0xFFE08C00),
+              currentRole: user.role,
+              onTap: () => _assignRole(user, 'shopManager', 'Shop Manager'),
+            ),
+            const SizedBox(height: 12),
+            _roleOption(
+              ctx,
+              roleValue: 'user',
+              label: 'Remove Admin',
+              desc: 'Return to standard user access',
+              icon: Icons.person_outline_rounded,
+              color: const Color(0xFF6B7A99),
+              currentRole: user.role,
+              onTap: () => _assignRole(user, 'user', 'User'),
+            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -370,25 +643,29 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
-  Widget _roleOption(BuildContext ctx, String role, String desc, IconData icon, Color color) {
+  Widget _roleOption(
+    BuildContext ctx, {
+    required String roleValue,
+    required String label,
+    required String desc,
+    required IconData icon,
+    required Color color,
+    required String currentRole,
+    required VoidCallback onTap,
+  }) {
+    final selected = currentRole == roleValue;
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
         Navigator.pop(ctx);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('$role assigned to user successfully ✓', style: const TextStyle(fontFamily: 'Sora')),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
+        onTap();
       },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: selected ? color.withValues(alpha: 0.08) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: selected ? color.withValues(alpha: 0.4) : AppColors.border),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: Row(
@@ -403,16 +680,90 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(role, style: TextStyle(fontFamily: 'Sora', fontSize: 15, fontWeight: FontWeight.w700, color: color)),
+                  Text(label, style: TextStyle(fontFamily: 'Sora', fontSize: 15, fontWeight: FontWeight.w700, color: color)),
                   const SizedBox(height: 4),
                   Text(desc, style: const TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
+            if (selected)
+              Icon(Icons.check_circle_rounded, size: 16, color: color)
+            else
+              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
           ],
         ),
       ),
     );
+  }
+
+  Widget _tierOption(
+    BuildContext ctx,
+    AdminUserTier tier,
+    bool selected,
+    VoidCallback onTap,
+  ) {
+    final color = _tierColor(tier);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.08) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: selected ? color.withValues(alpha: 0.4) : AppColors.border),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.upgrade_rounded, color: color, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(_tierLabel(tier),
+                  style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+            ),
+            if (selected)
+              Icon(Icons.check_circle_rounded, size: 16, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _tierLabel(AdminUserTier tier) {
+    switch (tier) {
+      case AdminUserTier.tier1:
+        return 'Tier 1';
+      case AdminUserTier.tier2:
+        return 'Tier 2';
+      case AdminUserTier.tier3:
+        return 'Tier 3';
+    }
+  }
+
+  Color _tierColor(AdminUserTier tier) {
+    switch (tier) {
+      case AdminUserTier.tier1:
+        return const Color(0xFF6B7A99);
+      case AdminUserTier.tier2:
+        return const Color(0xFF1A3FD8);
+      case AdminUserTier.tier3:
+        return const Color(0xFFF4A200);
+    }
   }
 }

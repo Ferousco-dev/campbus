@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "67086786194",
+    "project_id": "deep-anonymous",
+    "storage_bucket": "deep-anonymous.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:67086786194:android:835e081ada97b1cc04d04b",
+        "android_client_info": {
+          "package_name": "com.community.campuswallet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLpsFeB70F1NSscRdZmT9mQJChpqnZmxs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -12,6 +12,8 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final initial =
+        name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -42,10 +44,10 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
                   color: Colors.white.withOpacity(0.2),
                   border: Border.all(color: Colors.white.withOpacity(0.3)),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
-                    'F',
-                    style: TextStyle(
+                    initial,
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -81,23 +83,24 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               const Spacer(),
               // Settings icon → Admin Panel
-              GestureDetector(
-                onTap: onSettingsTap ?? () {},
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.2)),
-                  ),
-                  child: const Icon(
-                    Icons.settings_outlined,
-                    color: Colors.white,
-                    size: 18,
+              if (onSettingsTap != null)
+                GestureDetector(
+                  onTap: onSettingsTap,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

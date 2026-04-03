@@ -23,7 +23,13 @@ class _AdminShopPageState extends State<AdminShopPage> {
 
   Future<void> _load() async {
     final items = await AdminService.fetchShopItems();
-    if (mounted) setState(() { _items = items; _filtered = items; _loading = false; });
+    if (mounted) {
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
+      _applyFilter();
+    }
   }
 
   void _applyFilter() {
@@ -100,9 +106,9 @@ class _AdminShopPageState extends State<AdminShopPage> {
   }
 
   Widget _buildItemListTile(ShopItem item) {
-    final availColor = item.availability == AvailabilityStatus.available ? const Color(0xFF00B37E) : item.availability == AvailabilityStatus.limited ? const Color(0xFFE08C00) : const Color(0xFFE03E3E);
-    final availLabel = item.availability == AvailabilityStatus.available ? 'Available' : item.availability == AvailabilityStatus.limited ? 'Limited' : 'Out of Stock';
-    final catLabel = item.category == ShopCategory.wifi ? 'WiFi' : item.category == ShopCategory.campusLife ? 'Campus Life' : 'Academic';
+    final availColor = _availabilityColor(item.availability);
+    final availLabel = _availabilityLabel(item.availability);
+    final catLabel = _categoryLabel(item.category);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -180,42 +186,160 @@ class _AdminShopPageState extends State<AdminShopPage> {
     final nameCtrl = TextEditingController(text: item?.name ?? '');
     final priceCtrl = TextEditingController(text: item?.price.toStringAsFixed(0) ?? '');
     final descCtrl = TextEditingController(text: item?.description ?? '');
+    final tagCtrl = TextEditingController(text: item?.tag ?? '');
+    final stockCtrl = TextEditingController(text: item?.stockCount?.toString() ?? '');
+    final originalPriceCtrl = TextEditingController(text: item?.originalPrice?.toStringAsFixed(0) ?? '');
+    ShopCategory selectedCategory = item?.category ?? ShopCategory.wifi;
+    AvailabilityStatus selectedAvailability = item?.availability ?? AvailabilityStatus.available;
+    bool isRecurring = item?.isRecurring ?? false;
+    String? iconKey = item?.iconKey;
+    if (iconKey == null || !_iconOptions.containsKey(iconKey)) {
+      iconKey = _defaultIconKey(selectedCategory);
+    }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item == null ? 'Add Shop Item' : 'Edit Item', style: const TextStyle(fontFamily: 'Sora', fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 20),
-            _field('Item Name', nameCtrl),
-            const SizedBox(height: 14),
-            _field('Price (₦)', priceCtrl, inputType: TextInputType.number),
-            const SizedBox(height: 14),
-            _field('Description', descCtrl),
-            const SizedBox(height: 20),
-            SizedBox(width: double.infinity, height: 48, child: ElevatedButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(item == null ? 'Item added ✓' : 'Item updated ✓', style: const TextStyle(fontFamily: 'Sora')),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ));
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
-              child: Text(item == null ? 'Add Item' : 'Save Changes', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-            )),
-          ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item == null ? 'Add Shop Item' : 'Edit Item', style: const TextStyle(fontFamily: 'Sora', fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 20),
+              _field('Item Name', nameCtrl),
+              const SizedBox(height: 14),
+              _field('Price (₦)', priceCtrl, inputType: TextInputType.number),
+              const SizedBox(height: 14),
+              _field('Description', descCtrl),
+              const SizedBox(height: 14),
+              _field('Tag (optional)', tagCtrl),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _field('Original Price', originalPriceCtrl, inputType: TextInputType.number)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _field('Stock Count', stockCtrl, inputType: TextInputType.number)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<ShopCategory>(
+                value: selectedCategory,
+                items: ShopCategory.values.map((cat) {
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Text(_categoryLabel(cat), style: const TextStyle(fontFamily: 'Sora', fontSize: 13)),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setSheetState(() {
+                    selectedCategory = value;
+                    iconKey = _defaultIconKey(selectedCategory);
+                  });
+                },
+                decoration: _dropdownDecoration('Category'),
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<AvailabilityStatus>(
+                value: selectedAvailability,
+                items: AvailabilityStatus.values.map((status) {
+                  return DropdownMenuItem(
+                    value: status,
+                    child: Text(_availabilityLabel(status), style: const TextStyle(fontFamily: 'Sora', fontSize: 13)),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setSheetState(() => selectedAvailability = value);
+                },
+                decoration: _dropdownDecoration('Availability'),
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                value: iconKey,
+                items: _iconOptions.entries.map((entry) {
+                  return DropdownMenuItem(
+                    value: entry.key,
+                    child: Row(
+                      children: [
+                        Icon(entry.value, size: 16, color: AppColors.textPrimary),
+                        const SizedBox(width: 8),
+                        Text(_iconLabel(entry.key), style: const TextStyle(fontFamily: 'Sora', fontSize: 13)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) => setSheetState(() => iconKey = value),
+                decoration: _dropdownDecoration('Icon'),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                value: isRecurring,
+                onChanged: (val) => setSheetState(() => isRecurring = val),
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppColors.primary,
+                title: const Text('Recurring item', style: TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                subtitle: const Text('Charge this item on a recurring basis', style: TextStyle(fontFamily: 'Sora', fontSize: 11, color: AppColors.textSecondary)),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(width: double.infinity, height: 48, child: ElevatedButton(
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  final price = double.tryParse(priceCtrl.text.trim()) ?? 0;
+                  if (name.isEmpty || price <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Enter a valid name and price', style: TextStyle(fontFamily: 'Sora')),
+                      backgroundColor: Color(0xFFE03E3E),
+                      behavior: SnackBarBehavior.floating,
+                      margin: EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    ));
+                    return;
+                  }
+
+                  final originalPrice = double.tryParse(originalPriceCtrl.text.trim());
+                  final stockCount = int.tryParse(stockCtrl.text.trim());
+                  final itemData = ShopItem(
+                    id: item?.id ?? '',
+                    name: name,
+                    description: descCtrl.text.trim(),
+                    price: price,
+                    category: selectedCategory,
+                    availability: selectedAvailability,
+                    tag: tagCtrl.text.trim().isEmpty ? null : tagCtrl.text.trim(),
+                    icon: _iconFromKey(iconKey, selectedCategory),
+                    iconKey: iconKey,
+                    imagePath: item?.imagePath,
+                    originalPrice: (originalPrice ?? 0) > 0 ? originalPrice : null,
+                    stockCount: stockCount,
+                    isRecurring: isRecurring,
+                  );
+
+                  Navigator.pop(ctx);
+                  setState(() => _loading = true);
+                  if (item == null) {
+                    await AdminService.addShopItem(itemData);
+                  } else {
+                    await AdminService.updateShopItem(itemData);
+                  }
+                  await _load();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(item == null ? 'Item added ✓' : 'Item updated ✓', style: const TextStyle(fontFamily: 'Sora')),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                    margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ));
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+                child: Text(item == null ? 'Add Item' : 'Save Changes', style: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+              )),
+            ],
+          ),
         ),
       ),
     );
@@ -253,16 +377,117 @@ class _AdminShopPageState extends State<AdminShopPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Sora', color: AppColors.textSecondary))),
           TextButton(onPressed: () {
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('"${item.name}" deleted', style: const TextStyle(fontFamily: 'Sora')),
-              backgroundColor: const Color(0xFFE03E3E),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ));
+            setState(() => _loading = true);
+            AdminService.deleteShopItem(item.id).then((_) async {
+              await _load();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('"${item.name}" deleted', style: const TextStyle(fontFamily: 'Sora')),
+                backgroundColor: const Color(0xFFE03E3E),
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ));
+            });
           }, child: const Text('Delete', style: TextStyle(fontFamily: 'Sora', color: Color(0xFFE03E3E), fontWeight: FontWeight.w700))),
         ],
       ),
     );
+  }
+
+  InputDecoration _dropdownDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(fontFamily: 'Sora', fontSize: 12, color: AppColors.textSecondary),
+      filled: true,
+      fillColor: AppColors.background,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+    );
+  }
+
+  String _categoryLabel(ShopCategory category) {
+    switch (category) {
+      case ShopCategory.wifi:
+        return 'WiFi';
+      case ShopCategory.campusLife:
+        return 'Campus Life';
+      case ShopCategory.academic:
+        return 'Academic';
+    }
+  }
+
+  String _availabilityLabel(AvailabilityStatus status) {
+    switch (status) {
+      case AvailabilityStatus.available:
+        return 'Available';
+      case AvailabilityStatus.limited:
+        return 'Limited';
+      case AvailabilityStatus.unavailable:
+        return 'Out of Stock';
+      case AvailabilityStatus.comingSoon:
+        return 'Coming Soon';
+    }
+  }
+
+  Color _availabilityColor(AvailabilityStatus status) {
+    switch (status) {
+      case AvailabilityStatus.available:
+        return const Color(0xFF00B37E);
+      case AvailabilityStatus.limited:
+        return const Color(0xFFE08C00);
+      case AvailabilityStatus.unavailable:
+        return const Color(0xFFE03E3E);
+      case AvailabilityStatus.comingSoon:
+        return const Color(0xFF6B7A99);
+    }
+  }
+
+  final Map<String, IconData> _iconOptions = const {
+    'wifi': Icons.wifi_rounded,
+    'celebration': Icons.celebration_rounded,
+    'restaurant': Icons.restaurant_rounded,
+    'print': Icons.print_rounded,
+    'lock': Icons.lock_rounded,
+    'book': Icons.menu_book_rounded,
+    'quiz': Icons.quiz_rounded,
+  };
+
+  String _iconLabel(String key) {
+    switch (key) {
+      case 'wifi':
+        return 'WiFi';
+      case 'celebration':
+        return 'Celebration';
+      case 'restaurant':
+        return 'Food';
+      case 'print':
+        return 'Printing';
+      case 'lock':
+        return 'Locker';
+      case 'book':
+        return 'Book';
+      case 'quiz':
+        return 'Quiz';
+      default:
+        return 'Item';
+    }
+  }
+
+  String _defaultIconKey(ShopCategory category) {
+    switch (category) {
+      case ShopCategory.wifi:
+        return 'wifi';
+      case ShopCategory.campusLife:
+        return 'celebration';
+      case ShopCategory.academic:
+        return 'book';
+    }
+  }
+
+  IconData _iconFromKey(String? key, ShopCategory category) {
+    final resolved = key ?? _defaultIconKey(category);
+    return _iconOptions[resolved] ?? Icons.shopping_bag_outlined;
   }
 }

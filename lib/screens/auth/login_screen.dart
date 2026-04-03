@@ -1,6 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../services/auth/auth_service.dart';
+import '../../services/auth/biometric_service.dart';
+import '../../services/auth/pin_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/auth/validators.dart';
+import '../../widgets/auth/auth_input_field.dart';
 import '../../widgets/auth/code_dots.dart';
 import '../../widgets/auth/auth_keypad.dart';
 import '../../widgets/auth/skip_button.dart';
@@ -16,6 +22,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
   String _code = '';
   bool _isError = false;
   bool _isSuccess = false;
@@ -23,11 +30,44 @@ class _LoginScreenState extends State<LoginScreen> {
   int _attempts = 0;
   bool _isLocked = false;
   String? _errorMessage;
-  final GlobalKey<CodeDotsState> _dotsKey = GlobalKey<CodeDotsState>();
+  String? _emailError;
+  bool _biometricAvailable = false;
+  bool _isSignedIn = false;
+  String? _cachedEmail;
 
-  // Demo stored code (frontend-only)
-  static const String _storedCode = '123456';
   static const int _maxAttempts = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthContext();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAuthContext() async {
+    final cachedEmail = await PinService.readEmail();
+    final hasPin = await PinService.hasPin();
+    if (!hasPin && AuthService.currentUser != null) {
+      await AuthService.signOut();
+    }
+    final signedIn = AuthService.currentUser != null && hasPin;
+    final biometricAvailable = await BiometricService.isAvailable();
+
+    if (!mounted) return;
+    setState(() {
+      _cachedEmail = cachedEmail;
+      if (cachedEmail != null) {
+        _emailController.text = cachedEmail;
+      }
+      _isSignedIn = signedIn;
+      _biometricAvailable = biometricAvailable;
+    });
+  }
 
   void _onDigit(int digit) {
     if (_code.length >= 6 || _isLocked || _isLoading) return;
@@ -36,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _code += digit.toString();
       _isError = false;
       _errorMessage = null;
+      _emailError = null;
     });
 
     if (_code.length == 6) {
@@ -49,45 +90,69 @@ class _LoginScreenState extends State<LoginScreen> {
       _code = _code.substring(0, _code.length - 1);
       _isError = false;
       _errorMessage = null;
+      _emailError = null;
     });
   }
 
   Future<void> _verifyCode() async {
     setState(() => _isLoading = true);
 
-    // Simulate verification delay
-    await Future.delayed(const Duration(milliseconds: 300));
+    if (_isSignedIn) {
+      final matches = await PinService.verifyPin(_code);
+      if (!matches) {
+        _handleAuthFailure('Incorrect code. Please try again.');
+        return;
+      }
 
-    if (_code == _storedCode) {
       setState(() {
         _isSuccess = true;
         _isLoading = false;
       });
       await Future.delayed(const Duration(milliseconds: 600));
       if (mounted) _navigateToHome();
-    } else {
-      _attempts++;
-      setState(() {
-        _isError = true;
-        _isLoading = false;
-        _errorMessage = _attempts >= _maxAttempts
-            ? 'Too many attempts. Try again later.'
-            : 'Incorrect code. Please try again.';
-        _isLocked = _attempts >= _maxAttempts;
-      });
+      return;
+    }
 
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        setState(() {
-          _code = '';
-          _isError = false;
-        });
-      }
+    final email = _emailController.text.trim();
+    final emailError = AuthValidators.email(email);
+    if (emailError != null) {
+      setState(() {
+        _isLoading = false;
+        _emailError = emailError;
+      });
+      return;
+    }
+
+    try {
+      await AuthService.signInWithPin(email: email, pin: _code);
+      if (!mounted) return;
+      setState(() {
+        _isSignedIn = true;
+        _cachedEmail = email;
+        _isSuccess = true;
+        _isLoading = false;
+      });
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) _navigateToHome();
+    } on FirebaseAuthException catch (e) {
+      _handleAuthFailure(_mapAuthError(e));
+    } catch (_) {
+      _handleAuthFailure('Unable to sign in. Please try again.');
     }
   }
 
-  void _onBiometric() {
-    // Frontend-only: simulate biometric success
+  Future<void> _onBiometric() async {
+    if (!_isSignedIn) {
+      setState(() {
+        _errorMessage = 'Please sign in with your code first.';
+      });
+      return;
+    }
+
+    final ok = await BiometricService.authenticate();
+    if (!ok) return;
+
+    if (!mounted) return;
     setState(() => _isSuccess = true);
     Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) _navigateToHome();
@@ -96,6 +161,56 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateToHome() {
     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+  }
+
+  Future<void> _switchAccount() async {
+    await AuthService.signOut();
+    if (!mounted) return;
+    setState(() {
+      _cachedEmail = null;
+      _emailController.clear();
+      _isSignedIn = false;
+      _code = '';
+      _isError = false;
+      _errorMessage = null;
+      _emailError = null;
+    });
+  }
+
+  void _handleAuthFailure(String message) async {
+    _attempts++;
+    setState(() {
+      _isError = true;
+      _isLoading = false;
+      _errorMessage = _attempts >= _maxAttempts
+          ? 'Too many attempts. Try again later.'
+          : message;
+      _isLocked = _attempts >= _maxAttempts;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      setState(() {
+        _code = '';
+        _isError = false;
+      });
+    }
+  }
+
+  String _mapAuthError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'user-not-found':
+        return 'Account not found. Create an account first.';
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect code. Please try again.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'too-many-requests':
+        return 'Too many attempts. Try again later.';
+      default:
+        return 'Unable to sign in. Please try again.';
+    }
   }
 
   void _navigateToCreateAccount() {
@@ -158,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'CampusRide',
+                'Campus Wallet',
                 style: TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 20,
@@ -192,11 +307,78 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              if (_isSignedIn)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _cachedEmail ??
+                                AuthService.currentUser?.email ??
+                                'Signed in',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Sora',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _switchAccount,
+                          child: const Text(
+                            'Switch',
+                            style: TextStyle(
+                              fontFamily: 'Sora',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: AuthInputField(
+                    label: 'Email Address',
+                    placeholder: 'student@uni.edu',
+                    prefixIcon: Icons.email_outlined,
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    errorText: _emailError,
+                    onChanged: (_) {
+                      if (_emailError != null) {
+                        setState(() => _emailError = null);
+                      }
+                    },
+                  ),
+                ),
+
+              const SizedBox(height: 24),
 
               // === Code Dots ===
               CodeDots(
-                key: _dotsKey,
                 filledCount: _code.length,
                 isError: _isError,
                 isSuccess: _isSuccess,
@@ -248,7 +430,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: AuthKeypad(
                   onDigitTap: _onDigit,
                   onBackspace: _onBackspace,
-                  onBiometric: _onBiometric,
+                  onBiometric:
+                      _biometricAvailable && _isSignedIn ? _onBiometric : null,
                   enabled: !_isLocked && !_isLoading,
                 ),
               ),

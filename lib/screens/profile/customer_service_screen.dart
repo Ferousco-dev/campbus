@@ -90,7 +90,7 @@ class CustomerServiceScreen extends StatelessWidget {
           _buildContactTile(
             icon: Icons.email_rounded,
             title: 'Email Support',
-            subtitle: 'support@campusride.com',
+            subtitle: 'support@campuswallet.com',
             onTap: () {},
           ),
           const SizedBox(height: 12),
@@ -118,7 +118,7 @@ class CustomerServiceScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _buildFAQItem(
             'I lost my ID card, what should I do?',
-            'Please contact the school administration to request a new ID card and update your details on CampusRide.',
+            'Please contact the school administration to request a new ID card and update your details on Campus Wallet.',
           ),
           const SizedBox(height: 12),
           _buildFAQItem(

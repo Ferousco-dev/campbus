@@ -12,7 +12,7 @@ import 'package:transport_app/main.dart';
 
 void main() {
   testWidgets('App boots and shows a MaterialApp', (WidgetTester tester) async {
-    await tester.pumpWidget(const CampusRideApp());
+    await tester.pumpWidget(const CampusWalletApp());
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

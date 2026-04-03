@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../models/auth/registration_payload.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/auth/auth_app_bar.dart';
 import '../../widgets/auth/auth_input_field.dart';
@@ -68,9 +69,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     _validateAll();
     if (!_isValid) return;
 
+    final payload = RegistrationPayload(
+      fullName: _fullNameController.text.trim(),
+      matricNumber: _matricController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      dateOfBirth: _dateOfBirth!,
+      gender: _gender!,
+    );
+
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const SetCodeScreen(),
+        pageBuilder: (_, __, ___) => SetCodeScreen(registration: payload),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
             position: Tween<Offset>(
@@ -171,7 +181,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Join thousands of students using CampusRide',
+                    'Join thousands of students using Campus Wallet',
                     style: TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 14,

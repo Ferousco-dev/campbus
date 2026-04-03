@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/transaction_model.dart';
+import '../services/user/user_dashboard_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/stats_row.dart';
@@ -18,14 +20,46 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final credits = sampleTransactions
-        .where((t) => t.isCredit)
-        .fold(0.0, (sum, t) => sum + t.amount);
-    final debits = sampleTransactions
-        .where((t) => !t.isCredit)
-        .fold(0.0, (sum, t) => sum + t.amount);
+    final user = FirebaseAuth.instance.currentUser;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text(
+            'Please sign in to view your dashboard.',
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return StreamBuilder(
+      stream: UserDashboardService.userStream(user.uid),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() ?? {};
+        final fullName = data['fullName'] as String? ??
+            user.displayName ??
+            'User';
+        final balance =
+            (data['walletBalance'] as num?)?.toDouble() ?? 0;
+
+        return StreamBuilder<List<TransactionModel>>(
+          stream: UserDashboardService.recentTransactionsStream(user.uid),
+          builder: (context, txSnapshot) {
+            final transactions = txSnapshot.data ?? [];
+            final credits = transactions
+                .where((t) => t.isCredit)
+                .fold(0.0, (sum, t) => sum + t.amount);
+            final debits = transactions
+                .where((t) => !t.isCredit)
+                .fold(0.0, (sum, t) => sum + t.amount);
+
+            return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
@@ -65,7 +99,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'CampusRide',
+                          'Campus Wallet',
                           style: TextStyle(
                             fontFamily: 'Sora',
                             fontSize: 16,
@@ -133,10 +167,10 @@ class HomeScreen extends StatelessWidget {
 
                 // Balance Card
                 BalanceCard(
-                  balance: 50.00,
+                  balance: balance,
                   totalCredits: credits,
                   totalDebits: debits,
-                  userName: 'Oluwaferanmi',
+                  userName: fullName.split(' ').first,
                 ),
 
                 const SizedBox(height: 20),
@@ -169,7 +203,7 @@ class HomeScreen extends StatelessWidget {
 
                 // Recent Transactions
                 RecentTransactionsSection(
-                  transactions: sampleTransactions,
+                  transactions: transactions,
                   onViewAll: () {
                     HapticFeedback.lightImpact();
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const TransactionsScreen()));
@@ -182,6 +216,10 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+          },
+        );
+      },
     );
   }
 }

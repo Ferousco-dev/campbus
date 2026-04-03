@@ -1,4 +1,4 @@
-# CampusRide - Student Transport Wallet App
+# Campus Wallet - Student Transport Wallet App
 
 A production-grade Flutter frontend for a campus transport wallet system. This repo is UI-only; backend services are mocked or stubbed.
 
@@ -62,7 +62,26 @@ mkdir -p assets/fonts assets/images
 flutter pub get
 ```
 
-### 4. Run
+### 4. Firebase Setup (Auth + Firestore)
+1. Create a Firebase project: https://console.firebase.google.com
+2. Add an Android app
+   - Package name: `com.community.campuswallet` (or your own)
+   - Download `google-services.json` → place in `android/app/`
+3. Add an iOS app
+   - Bundle ID: `com.community.campuswallet` (or your own)
+   - Download `GoogleService-Info.plist` → place in `ios/Runner/`
+   - Open `ios/Runner.xcworkspace` in Xcode and add the plist to the Runner target
+4. Enable **Authentication → Email/Password** in the Firebase console
+5. Create a **Firestore** database (start in test mode for development)
+6. (Optional) If you need web/macos config, run:
+```bash
+flutterfire configure
+```
+7. Note: Firebase Auth sends a reset **link** by default. If you need email OTPs,
+   you'll need a backend (Cloud Functions + email provider). The UI can be wired
+   once that service exists.
+
+### 5. Run
 ```bash
 flutter run
 ```

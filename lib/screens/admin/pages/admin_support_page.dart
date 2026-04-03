@@ -30,20 +30,24 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
   }
 
   Future<void> _reply() async {
-    if (_replyCtrl.text.isEmpty) return;
+    if (_replyCtrl.text.isEmpty || _selected == null) return;
+    final ticketId = _selected!.id;
     setState(() => _sending = true);
-    await AdminService.replyToTicket(_selected!.id, _replyCtrl.text);
-    if (mounted) {
-      setState(() => _sending = false);
-      _replyCtrl.clear();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Reply sent ✓', style: TextStyle(fontFamily: 'Sora')),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
-    }
+    await AdminService.replyToTicket(ticketId, _replyCtrl.text);
+    await _load();
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      _selected = _findTicket(ticketId);
+    });
+    _replyCtrl.clear();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Reply sent ✓', style: TextStyle(fontFamily: 'Sora')),
+      backgroundColor: AppColors.success,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   @override
@@ -193,16 +197,7 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
               const SizedBox(width: 8),
               if (ticket.status != TicketStatus.resolved && ticket.status != TicketStatus.closed)
                 GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('Ticket resolved ✓', style: TextStyle(fontFamily: 'Sora')),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ));
-                  },
+                  onTap: () => _resolveTicket(ticket),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(color: const Color(0xFFE6FAF4), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF00B37E).withValues(alpha: 0.3))),
@@ -256,5 +251,29 @@ class _AdminSupportPageState extends State<AdminSupportPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _resolveTicket(SupportTicket ticket) async {
+    HapticFeedback.lightImpact();
+    await AdminService.resolveTicket(ticket.id);
+    await _load();
+    if (!mounted) return;
+    setState(() {
+      _selected = _findTicket(ticket.id);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Ticket resolved ✓', style: TextStyle(fontFamily: 'Sora')),
+      backgroundColor: AppColors.success,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
+  SupportTicket? _findTicket(String id) {
+    for (final ticket in _tickets) {
+      if (ticket.id == id) return ticket;
+    }
+    return null;
   }
 }
